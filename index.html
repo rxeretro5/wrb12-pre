@@ -1,0 +1,1478 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>ผังงานเดินวิ่ง 3 มิติ</title>
+<meta name="description" content="ผังจัดกิจกรรมแบบ 3 มิติ โครงการแสงนำใจ ไทยทั้งชาติ เดิน วิ่ง ปั่น ป้องกันอัมพาต ครั้งที่ 12 จังหวัดแพร่ ณ บริเวณกาดสามวัย เทศบาลเมืองแพร่">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600;800&family=Sarabun:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy: #0c3a8c;
+    --navy-2: #1556c4;
+    --red: #e3262b;
+    --yellow: #ffd21f;
+    --ink: #14213d;
+    --muted: #5b6785;
+    --panel: rgba(255, 255, 255, 0.92);
+    --panel-line: rgba(12, 58, 140, 0.14);
+    --shadow: 0 8px 28px rgba(10, 30, 80, 0.22);
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #bfe3ff; color: var(--ink);
+    font-family: "Sarabun", "Noto Sans Thai", "Leelawadee UI", "Tahoma", sans-serif; }
+  button { font: inherit; }
+  #stage { position: fixed; inset: 0; }
+  #stage canvas { display: block; touch-action: none; }
+  #labels { position: fixed; inset: 0; pointer-events: none; }
+
+  /* ---------- top bar ---------- */
+  .topbar { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 20;
+    background: var(--panel); border: 1px solid var(--panel-line); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 8px 18px; text-align: center; width: max-content; max-width: min(980px, calc(100vw - 600px)); }
+  .topbar h1 { margin: 0; font-family: "Kanit", sans-serif; font-weight: 600; font-size: 18px; line-height: 1.3; color: var(--navy); }
+  .topbar h1 b { color: var(--red); }
+  .topbar .meta { font-size: 13.5px; color: var(--muted); margin-top: 2px; }
+  .topbar .meta span { white-space: nowrap; }
+
+  /* ---------- legend ---------- */
+  #legend { position: fixed; top: 92px; left: 12px; z-index: 15; width: 268px; max-height: calc(100vh - 190px);
+    display: flex; flex-direction: column;
+    background: var(--panel); border: 1px solid var(--panel-line); border-radius: var(--radius); box-shadow: var(--shadow); }
+  #legend .lg-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px 6px 14px; }
+  #legend h2 { margin: 0; font-family: "Kanit", sans-serif; font-size: 17px; color: var(--navy); }
+  #legend .lg-close { display: none; border: 0; background: none; font-size: 22px; line-height: 1; cursor: pointer; color: var(--muted); }
+  #legend .lg-fold { border: 0; background: #eef3ff; color: var(--navy); border-radius: 8px; width: 28px; height: 28px; cursor: pointer;
+    font-size: 16px; line-height: 1; transition: transform .2s; }
+  #legend.folded ul { display: none; }
+  #legend.folded .lg-fold { transform: rotate(180deg); }
+  #legend.folded { width: auto; }
+  #legend.folded .lg-head { padding-bottom: 10px; gap: 12px; }
+  #legend ul { list-style: none; margin: 0; padding: 0 8px 10px; overflow-y: auto; }
+  #legend li button { width: 100%; display: flex; align-items: flex-start; gap: 8px; border: 0; background: none; cursor: pointer;
+    text-align: left; padding: 6px 6px; border-radius: 10px; color: var(--ink); font-size: 14.5px; line-height: 1.35; }
+  #legend li button:hover, #legend li button.active { background: #e8f0ff; }
+  .nums { display: inline-flex; gap: 3px; flex-shrink: 0; }
+  .num { display: inline-grid; place-items: center; min-width: 24px; height: 24px; padding: 0 5px; border-radius: 12px;
+    background: var(--red); color: #fff; font-family: "Kanit", sans-serif; font-weight: 600; font-size: 13px; line-height: 1;
+    box-shadow: 0 0 0 2px #fff inset; }
+
+  /* ---------- toolbar ---------- */
+  .toolbar { position: fixed; right: 12px; top: 92px; z-index: 15; display: flex; flex-direction: column; gap: 8px; }
+  .tbtn { display: flex; align-items: center; gap: 8px; border: 1px solid var(--panel-line); background: var(--panel);
+    color: var(--navy); border-radius: 12px; padding: 8px 12px; cursor: pointer; box-shadow: var(--shadow);
+    font-family: "Kanit", sans-serif; font-size: 14.5px; white-space: nowrap; }
+  .tbtn svg { width: 20px; height: 20px; flex-shrink: 0; }
+  .tbtn:hover { background: #fff; }
+  .tbtn.on { background: var(--navy); color: #fff; border-color: var(--navy); }
+  #menuBtn { display: none; }
+
+  /* ---------- info card ---------- */
+  #card { position: fixed; left: 50%; bottom: 16px; transform: translate(-50%, 140%); z-index: 18;
+    width: min(560px, calc(100vw - 24px)); background: var(--panel); border: 1px solid var(--panel-line);
+    border-radius: var(--radius); box-shadow: var(--shadow); padding: 12px 16px 14px; visibility: hidden;
+    transition: transform .35s ease, visibility 0s .35s; }
+  #card.show { transform: translate(-50%, 0); visibility: visible; transition: transform .35s ease; }
+  #card .c-head { display: flex; align-items: center; gap: 10px; }
+  #card .c-head .num { min-width: 32px; height: 32px; border-radius: 16px; font-size: 16px; }
+  #card h3 { margin: 0; font-family: "Kanit", sans-serif; font-size: 19px; color: var(--navy); flex: 1; line-height: 1.3; }
+  #card .c-close { border: 0; background: none; font-size: 24px; cursor: pointer; color: var(--muted); line-height: 1; }
+  #card p { margin: 8px 0 0; font-size: 15.5px; line-height: 1.55; }
+  #card .c-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  #card .c-actions button { border: 1px solid var(--navy); background: #fff; color: var(--navy); border-radius: 10px;
+    padding: 5px 12px; cursor: pointer; font-family: "Kanit", sans-serif; font-size: 14px; }
+  #card .c-actions button.primary { background: var(--navy); color: #fff; }
+  #tourBar { height: 4px; background: #e3e9f6; border-radius: 2px; margin-top: 10px; overflow: hidden; display: none; }
+  #tourBar i { display: block; height: 100%; width: 0; background: var(--red); }
+
+  /* ---------- 3D markers ---------- */
+  .marker { pointer-events: auto; cursor: pointer; display: flex; flex-direction: column; align-items: center;
+    user-select: none; transition: opacity .2s; }
+  .marker .num { min-width: 30px; height: 30px; border-radius: 15px; font-size: 15px; box-shadow: 0 0 0 3px #fff, 0 3px 8px rgba(0,0,0,.35); }
+  .marker .nm { margin-top: 5px; background: rgba(12, 58, 140, 0.9); color: #fff; font-family: "Kanit", sans-serif; font-size: 12.5px;
+    padding: 2px 8px; border-radius: 8px; white-space: nowrap; max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
+  .marker:hover .num, .marker.active .num { background: var(--yellow); color: var(--ink); }
+  body.hide-names .marker .nm, .marker.far .nm { display: none; }
+  .marker:hover .nm { display: block; }
+  .marker.active .nm { display: block !important; background: var(--red); }
+
+  /* ---------- minimap ---------- */
+  #minimap { position: fixed; right: 12px; bottom: 16px; z-index: 14; width: 210px; height: 160px;
+    background: rgba(255,255,255,.9); border: 1px solid var(--panel-line); border-radius: 12px; box-shadow: var(--shadow); cursor: crosshair; }
+
+  /* ---------- hints / joystick ---------- */
+  #hint { position: fixed; left: 50%; top: 92px; transform: translateX(-50%); z-index: 12; background: rgba(20, 33, 61, .82);
+    color: #fff; padding: 7px 14px; border-radius: 10px; font-size: 14px; text-align: center; max-width: calc(100vw - 24px);
+    transition: opacity .5s; pointer-events: none; }
+  #joy { position: fixed; left: 22px; bottom: 26px; z-index: 16; width: 120px; height: 120px; border-radius: 50%;
+    background: rgba(255,255,255,.35); border: 2px solid rgba(255,255,255,.8); display: none; touch-action: none; }
+  #joy i { position: absolute; left: 50%; top: 50%; width: 52px; height: 52px; margin: -26px 0 0 -26px; border-radius: 50%;
+    background: rgba(12, 58, 140, .85); box-shadow: 0 2px 8px rgba(0,0,0,.3); }
+  body.walk.touch #joy { display: block; }
+  #runBtn { position: fixed; left: 154px; bottom: 50px; z-index: 16; display: none; width: 64px; height: 64px; border-radius: 50%;
+    border: 2px solid #fff; background: rgba(227, 38, 43, .85); color: #fff; font-family: "Kanit", sans-serif; font-size: 14px; touch-action: none; }
+  body.walk.touch #runBtn { display: block; }
+  body.walk.touch #minimap { bottom: auto; top: 92px; }
+
+  /* ---------- loading & poster ---------- */
+  #loading { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: linear-gradient(#bfe3ff, #eef7ff);
+    font-family: "Kanit", sans-serif; color: var(--navy); font-size: 18px; transition: opacity .6s; }
+  #loading .spin { width: 44px; height: 44px; border: 4px solid #cfe0ff; border-top-color: var(--red); border-radius: 50%;
+    margin: 0 auto 12px; animation: sp 1s linear infinite; }
+  @keyframes sp { to { transform: rotate(360deg); } }
+  #posterDlg { border: 0; padding: 0; border-radius: var(--radius); box-shadow: var(--shadow); max-width: min(92vw, 720px); background: #fff; }
+  #posterDlg::backdrop { background: rgba(10, 20, 50, .6); }
+  #posterDlg img { display: block; width: 100%; height: auto; max-height: 84vh; object-fit: contain; }
+  #posterDlg button { position: absolute; top: 8px; right: 8px; border: 0; background: rgba(255,255,255,.9); border-radius: 50%;
+    width: 36px; height: 36px; font-size: 22px; cursor: pointer; }
+
+  /* ---------- phones ---------- */
+  @media (max-width: 1180px) {
+    .topbar { left: 294px; right: 170px; transform: none; width: auto; max-width: none; }
+  }
+  @media (max-width: 768px) {
+    .topbar { top: 8px; padding: 6px 12px; left: 12px; right: 64px; transform: none; max-width: none; }
+    .topbar h1 { font-size: 14px; }
+    .topbar .meta { font-size: 12px; }
+    #menuBtn { display: flex; position: fixed; top: 8px; right: 12px; z-index: 21; padding: 10px; }
+    #menuBtn span { display: none; }
+    #legend { top: 0; left: 0; bottom: 0; max-height: none; width: min(300px, 86vw); border-radius: 0 var(--radius) var(--radius) 0;
+      transform: translateX(-105%); transition: transform .3s; z-index: 30; }
+    body.legend-open #legend { transform: none; }
+    #legend .lg-close { display: block; }
+    #legend .lg-fold { display: none; }
+    #legend.folded ul { display: block; }
+    .toolbar { top: auto; bottom: 12px; right: 12px; left: 12px; flex-direction: row; justify-content: center; flex-wrap: wrap; gap: 6px; }
+    .tbtn { padding: 7px 9px; font-size: 13px; }
+    .tbtn span { display: none; }
+    .tbtn.keep span { display: inline; }
+    #card { bottom: 70px; padding: 10px 12px 12px; }
+    #card p { font-size: 14.5px; }
+    #minimap { width: 140px; height: 108px; top: 84px; bottom: auto; right: 12px; }
+    #hint { top: auto; bottom: 120px; font-size: 13px; }
+    #joy { bottom: 76px; }
+    #runBtn { bottom: 104px; }
+    body.walk.touch #minimap { top: 84px; }
+  }
+</style>
+<script type="importmap">
+{ "imports": { "three": "./lib/three.module.min.js", "three/addons/": "./lib/" } }
+</script>
+</head>
+<body>
+<div id="stage"></div>
+<div id="labels"></div>
+
+<header class="topbar">
+  <h1>โครงการแสงนำใจ ไทยทั้งชาติ เดิน วิ่ง ปั่น ป้องกันอัมพาต ครั้งที่ <b>12</b> เฉลิมพระเกียรติ จังหวัดแพร่</h1>
+  <div class="meta"><span>วันอาทิตย์ที่ 1 พฤศจิกายน 2569</span> · <span>05.00–12.00 น.</span> · <span>ณ บริเวณกาดสามวัย เทศบาลเมืองแพร่</span></div>
+</header>
+
+<aside id="legend" aria-label="รายการจุดในงาน">
+  <div class="lg-head"><h2>ผังจัดกิจกรรม</h2><button class="lg-fold" id="legendFold" aria-label="ย่อ/ขยายรายการ" title="ย่อ/ขยายรายการ">▴</button><button class="lg-close" id="legendClose" aria-label="ปิด">×</button></div>
+  <ul id="legendList"></ul>
+</aside>
+
+<button class="tbtn" id="menuBtn" aria-label="รายการจุด">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg><span>รายการจุด</span>
+</button>
+
+<nav class="toolbar">
+  <button class="tbtn on" id="btnOrbit" title="มุมมองจากด้านบน หมุน/ซูมได้">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="12" rx="9" ry="4"/><circle cx="12" cy="12" r="2"/><path d="M12 3v3M12 18v3"/></svg><span>มุมสูง</span></button>
+  <button class="tbtn" id="btnWalk" title="เดินชมในงานระดับสายตา">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="13" cy="4" r="2"/><path d="M10 21l2-6 3 3v3M9 12l2-4 4 2 2 3M11 8l-2 4"/></svg><span>เดินในงาน</span></button>
+  <button class="tbtn" id="btnTour" title="ทัวร์อัตโนมัติทีละจุด">
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg><span>ทัวร์อัตโนมัติ</span></button>
+  <button class="tbtn" id="btnReset" title="กลับไปภาพรวม">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg><span>ภาพรวม</span></button>
+  <button class="tbtn" id="btnNames" title="แสดง/ซ่อนชื่อจุด">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg><span>ชื่อจุด</span></button>
+  <button class="tbtn" id="btnRunners" title="แสดง/ซ่อนนักวิ่งจำลอง">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="14" cy="4" r="2"/><path d="M6 20l4-5 3 2 2 4M8 11l3-3 4 1 2 4 3 1M11 8l-1 6"/></svg><span>นักวิ่ง</span></button>
+  <button class="tbtn" id="btnPoster" title="ดูผังต้นฉบับ">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/></svg><span>ผังต้นฉบับ</span></button>
+</nav>
+
+<section id="card" aria-live="polite">
+  <div class="c-head"><span class="nums" id="cNums"></span><h3 id="cTitle"></h3><button class="c-close" id="cClose" aria-label="ปิด">×</button></div>
+  <p id="cDesc"></p>
+  <div class="c-actions" id="cActions"></div>
+  <div id="tourBar"><i></i></div>
+</section>
+
+<canvas id="minimap" width="420" height="320" title="แผนที่ย่อ: คลิกเพื่อไปยังตำแหน่ง"></canvas>
+<div id="hint"></div>
+<div id="joy"><i></i></div>
+<button id="runBtn">วิ่ง</button>
+
+<dialog id="posterDlg"><img src="assets/poster.jpg" alt="ผังจัดกิจกรรมต้นฉบับ"><button id="posterClose" aria-label="ปิด">×</button></dialog>
+<div id="loading"><div><div class="spin"></div>กำลังสร้างผังงาน 3 มิติ…</div></div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/OrbitControls.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/CSS2DRenderer.js';
+
+/* =====================================================================
+   ข้อมูลจุดต่าง ๆ ในงาน (พิกัดเป็นเมตร: x = ไปทางขวาของผัง, z = ไปทางถนนด้านล่าง)
+   ===================================================================== */
+const POINTS = {
+  1:  { name: 'เวที', pos: [-31, 9], h: 9.5, view: [1, .45, .25], dist: 24,
+        desc: 'เวทีหลักสำหรับพิธีเปิด กล่าวรายงาน มอบรางวัล และกิจกรรมบนเวที มีจอ LED และเครื่องเสียงทั้งสองข้าง' },
+  2:  { name: 'จุดต้อนรับผู้บริหาร', pos: [-18, 16], h: 3.2,
+        desc: 'โต๊ะรับรองและที่นั่งสำหรับผู้บริหารและแขกผู้มีเกียรติ อยู่ติดถนนด้านหน้างาน ใกล้จุดปล่อยตัว' },
+  3:  { name: 'จุดน้ำดื่ม', pos: [-4, 17], h: 3.2,
+        desc: 'จุดบริการน้ำดื่มด้านหน้างาน ใกล้ซุ้มปล่อยตัว สำหรับผู้ร่วมกิจกรรมก่อนออกตัวและหลังกลับเข้าเส้นชัย' },
+  4:  { name: 'จุดฝากของและลงทะเบียนรับรางวัล', pos: [5, 6], h: 4.6,
+        desc: 'เต็นท์สีแดงกลางลาน สำหรับฝากสัมภาระก่อนวิ่ง และลงทะเบียนรับรางวัลหลังเข้าเส้นชัย' },
+  5:  { name: 'จุดปล่อยตัว (START)', pos: [11, 28], h: 8, view: [-1, .35, .15], dist: 22,
+        desc: 'ซุ้มปล่อยตัว START บนถนนหน้ากาดสามวัย ผู้ร่วมกิจกรรมรวมตัวบนถนนก่อนปล่อยตัวตามเวลา' },
+  6:  { name: 'จุดบริการห้องน้ำ', pos: [11, 41], h: 4.4, view: [.3, .5, -1],
+        desc: 'รถสุขาเคลื่อนที่ ฝั่งตรงข้ามถนนด้านหน้างาน ใกล้จุดปล่อยตัว' },
+  7:  { name: 'จุดปฐมพยาบาล', pos: [32, 38], h: 4.6, view: [-.4, .5, -1],
+        desc: 'เต็นท์ปฐมพยาบาลพร้อมรถพยาบาลและเจ้าหน้าที่ประจำ ตรงมุมสี่แยก หากรู้สึกไม่สบาย เจ็บหน้าอก หน้ามืด หรือบาดเจ็บ แจ้งเจ้าหน้าที่ได้ทันที' },
+  8:  { name: 'จุดน้ำดื่ม', pos: [27, 13], h: 3.4,
+        desc: 'จุดบริการน้ำดื่มด้านขวาของลาน ใกล้รั้วอิฐและแนวพุ่มไม้ ติดกับจุดทิ้งขยะ' },
+  9:  { name: 'จุดทิ้งขยะ', pos: [31, 6.5], h: 2.6,
+        desc: 'ถังขยะแยกประเภท: สีน้ำเงิน ขยะทั่วไป · สีเขียว ขยะเปียก/เศษอาหาร · สีเหลือง ขยะรีไซเคิล (ขวด แก้ว) · สีแดง ขยะอันตราย' },
+  10: { name: 'จุดอาหาร', pos: [22, -6], h: 4.6, view: [1, .55, .55], dist: 26,
+        desc: 'แถวเต็นท์สีเหลืองด้านขวาของลาน บริการอาหารสำหรับผู้ร่วมกิจกรรม' },
+  11: { name: 'จุดทิ้งขยะ', pos: [21, -22], h: 2.6,
+        desc: 'ถังขยะแยกประเภทบริเวณปลายแถวจุดอาหาร ใกล้หลังคาทางเดิน: น้ำเงิน ทั่วไป · เขียว เปียก · เหลือง รีไซเคิล · แดง อันตราย' },
+  12: { name: 'จุดกิจกรรม นศ.พยาบาล', pos: [-11, -13], h: 4.8,
+        desc: 'เต็นท์สีชมพู จุดกิจกรรมของนักศึกษาพยาบาล อยู่กลางลานด้านใน' },
+  13: { name: 'จุดลงนามถวายพระพรและจุดนิทรรศการ', pos: [-6, -28], h: 6.4, view: [.25, .4, 1], dist: 22, walkAt: [-7, -21.5],
+        desc: 'ใต้หลังคาทางเดินยาวของกาดสามวัย (ด้านบนและด้านซ้ายของลาน) มีโต๊ะลงนามถวายพระพรและบอร์ดนิทรรศการความรู้' },
+  14: { name: 'จุดบริการห้องน้ำ', pos: [-43, -7], h: 4.4, view: [1, .5, .4],
+        desc: 'รถสุขาเคลื่อนที่ ด้านหลังเวที ต้นหลังคาทางเดิน' },
+  15: { name: 'จุดถ่ายภาพ Back drop', pos: [-23, -1], h: 4.8, view: [.9, .35, .55], dist: 16,
+        desc: 'ฉากถ่ายภาพที่ระลึก (Back drop) ข้างเวที ถ่ายภาพหมู่ก่อนหรือหลังร่วมกิจกรรม' },
+  16: { name: 'จุดบริการอาหาร ว.เอกชน', pos: [1, -17], h: 4.6,
+        desc: 'เต็นท์ลายแดงขาวและเต็นท์สีเขียว จุดบริการอาหารจากหน่วยงานเอกชน อยู่ระหว่างจุดกิจกรรม นศ.พยาบาล และแถวจุดอาหาร' },
+};
+// ลำดับรายการเหมือนในผังต้นฉบับ
+const LEGEND = [[1], [2], [3, 8], [4], [5], [6, 14], [7], [9, 11], [10], [12], [13], [15], [16]];
+// ลำดับทัวร์: ตามทางเดินจริงในงาน
+const TOUR = [5, 3, 2, 1, 15, 14, 13, 12, 16, 11, 10, 8, 9, 4, 7, 6];
+const LEGEND_NAMES = { '6,14': 'จุดบริการห้องน้ำ', '3,8': 'จุดน้ำดื่ม', '9,11': 'จุดทิ้งขยะ' };
+
+/* =====================================================================
+   พื้นฐาน renderer / scene / camera
+   ===================================================================== */
+const isTouch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
+if (isTouch) document.body.classList.add('touch');
+const lowPower = isTouch && Math.min(screen.width, screen.height) < 820;
+
+const stageEl = document.getElementById('stage');
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, lowPower ? 1.5 : 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+stageEl.appendChild(renderer.domElement);
+
+const labelRenderer = new CSS2DRenderer({ element: document.getElementById('labels') });
+labelRenderer.setSize(innerWidth, innerHeight);
+
+const scene = new THREE.Scene();
+const SKY_TOP = new THREE.Color('#5fb4f5'), SKY_BOTTOM = new THREE.Color('#e4f4ff');
+scene.fog = new THREE.Fog(SKY_BOTTOM, 160, 420);
+
+const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.1, 1200);
+const OVERVIEW = { pos: new THREE.Vector3(78, 82, 104), target: new THREE.Vector3(-2, 0, 2) };
+camera.position.copy(OVERVIEW.pos);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.copy(OVERVIEW.target);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.maxPolarAngle = Math.PI * 0.47;
+controls.minDistance = 6;
+controls.maxDistance = 260;
+controls.screenSpacePanning = false;
+controls.update();
+
+/* ---------- แสง ---------- */
+scene.add(new THREE.HemisphereLight('#dff0ff', '#b39a74', 1.35));
+const sun = new THREE.DirectionalLight('#fff3dd', 2.6);
+sun.position.set(-50, 110, 70);
+sun.castShadow = true;
+sun.shadow.mapSize.set(lowPower ? 1024 : 2048, lowPower ? 1024 : 2048);
+Object.assign(sun.shadow.camera, { left: -95, right: 95, top: 95, bottom: -95, near: 10, far: 320 });
+sun.shadow.bias = -0.0005;
+sun.shadow.normalBias = 0.04;
+scene.add(sun);
+
+/* =====================================================================
+   ตัวช่วยสร้างวัตถุ
+   ===================================================================== */
+const UNIT_BOX = new THREE.BoxGeometry(1, 1, 1);
+const PYRAMID = new THREE.ConeGeometry(Math.SQRT1_2, 1, 4, 1); PYRAMID.rotateY(Math.PI / 4);   // ฐานสี่เหลี่ยม 1×1
+const matCache = new Map();
+function mat(color, extra = {}) {
+  const key = color + JSON.stringify(extra);
+  if (!matCache.has(key)) matCache.set(key, new THREE.MeshStandardMaterial({ color, roughness: 0.82, metalness: 0, ...extra }));
+  return matCache.get(key);
+}
+function shade(m, cast = true) { m.castShadow = cast; m.receiveShadow = true; return m; }
+function box(parent, w, h, d, material, x, y, z, ry = 0) {
+  const m = shade(new THREE.Mesh(UNIT_BOX, typeof material === 'string' ? mat(material) : material));
+  m.scale.set(w, h, d); m.position.set(x, y, z); m.rotation.y = ry;
+  parent.add(m); return m;
+}
+function cyl(parent, rt, rb, h, material, x, y, z, seg = 12) {
+  const m = shade(new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, seg), typeof material === 'string' ? mat(material) : material));
+  m.position.set(x, y, z); parent.add(m); return m;
+}
+function group(x = 0, z = 0, ry = 0, parent = scene) {
+  const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = ry; parent.add(g); return g;
+}
+function canvasTex(w, h, draw, repeat) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  draw(c.getContext('2d'), w, h);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 4;
+  if (repeat) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(...repeat); }
+  return t;
+}
+function texPlane(parent, w, h, tex, x, y, z, ry = 0, extra = {}) {
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.7, ...extra }));
+  m.position.set(x, y, z); m.rotation.y = ry; m.receiveShadow = true; parent.add(m); return m;
+}
+const FONT_H = '"Kanit", "Sarabun", "Noto Sans Thai", "Tahoma", sans-serif';
+function fitText(ctx, text, maxW, size, weight = 600) {
+  let s = size;
+  do { ctx.font = `${weight} ${s}px ${FONT_H}`; s -= 2; } while (ctx.measureText(text).width > maxW && s > 8);
+}
+
+// ข้อมูลการชนสำหรับโหมดเดิน: [minX, maxX, minZ, maxZ]
+const COLLIDERS = [];
+function solid(x, z, w, d, ry = 0) {
+  const c = Math.abs(Math.cos(ry)), s = Math.abs(Math.sin(ry));
+  const hw = (w * c + d * s) / 2, hd = (w * s + d * c) / 2;
+  COLLIDERS.push([x - hw, x + hw, z - hd, z + hd]);
+}
+
+/* =====================================================================
+   พื้น ถนน ท้องฟ้า
+   ===================================================================== */
+function buildSky() {
+  scene.background = canvasTex(4, 512, (g, w, h) => {
+    const gr = g.createLinearGradient(0, 0, 0, h);
+    gr.addColorStop(0, '#' + SKY_TOP.getHexString()); gr.addColorStop(0.62, '#bfe3ff'); gr.addColorStop(1, '#' + SKY_BOTTOM.getHexString());
+    g.fillStyle = gr; g.fillRect(0, 0, w, h);
+  });
+  // เมฆ
+  const cloudTex = canvasTex(256, 128, (g, w, h) => {
+    for (let i = 0; i < 14; i++) {
+      const x = 40 + Math.random() * 176, y = 50 + Math.random() * 40, r = 22 + Math.random() * 26;
+      const gr = g.createRadialGradient(x, y, 0, x, y, r);
+      gr.addColorStop(0, 'rgba(255,255,255,.95)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+    }
+  });
+  const cmat = new THREE.SpriteMaterial({ map: cloudTex, transparent: true, depthWrite: false, fog: false });
+  for (let i = 0; i < 16; i++) {
+    const s = new THREE.Sprite(cmat);
+    const a = Math.random() * Math.PI * 2, r = 230 + Math.random() * 140;
+    s.position.set(Math.cos(a) * r, 55 + Math.random() * 60, Math.sin(a) * r);
+    const sc = 70 + Math.random() * 60; s.scale.set(sc, sc / 2, 1);
+    scene.add(s);
+  }
+}
+
+function buildGround() {
+  const grassTex = canvasTex(256, 256, (g, w, h) => {
+    g.fillStyle = '#9fc777'; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 2600; i++) { g.fillStyle = Math.random() < .5 ? 'rgba(70,120,40,.18)' : 'rgba(210,230,150,.18)'; g.fillRect(Math.random() * w, Math.random() * h, 2, 2); }
+  }, [60, 60]);
+  const grass = new THREE.Mesh(new THREE.PlaneGeometry(900, 900), new THREE.MeshStandardMaterial({ map: grassTex, roughness: 1 }));
+  grass.rotation.x = -Math.PI / 2; grass.receiveShadow = true; scene.add(grass);
+
+  // ลานกาดสามวัย (พื้นทราย/ดินอัด)
+  const sandTex = canvasTex(256, 256, (g, w, h) => {
+    g.fillStyle = '#dcbf92'; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 4200; i++) { g.fillStyle = Math.random() < .5 ? 'rgba(150,110,60,.12)' : 'rgba(255,240,210,.16)'; g.fillRect(Math.random() * w, Math.random() * h, 2, 2); }
+  }, [14, 10]);
+  const sandMat = new THREE.MeshStandardMaterial({ map: sandTex, roughness: 1 });
+  // พื้นทรายทั้งบล็อก ครอบลานงานและฝั่งตรงข้ามถนน
+  const blocks = [[-92, 41.5, -60, 23.5], [-92, 41.5, 32.5, 95], [50.5, 140, -60, 23.5], [50.5, 140, 32.5, 95]];
+  for (const [x0, x1, z0, z1] of blocks) {
+    const p = new THREE.Mesh(new THREE.PlaneGeometry(x1 - x0, z1 - z0), sandMat);
+    p.rotation.x = -Math.PI / 2; p.position.set((x0 + x1) / 2, 0.01, (z0 + z1) / 2); p.receiveShadow = true; scene.add(p);
+  }
+}
+
+function buildRoads() {
+  const asphalt = mat('#5d6066', { roughness: 0.95 });
+  const white = mat('#f4f4f0');
+  const curb = mat('#c9c7c0');
+  const R = (x, z, w, d) => { const m = box(scene, w, 0.06, d, asphalt, x, 0.03, z); m.castShadow = false; return m; };
+  // ถนน A (หน้างาน วิ่งแนวนอน) ศูนย์กลาง z = 28   /  ถนน B (ข้างศาลากลาง) ศูนย์กลาง x = 46
+  R(24, 28, 260, 9); R(46, 18, 9, 260);
+  // ขอบทางเท้า
+  for (const [x, z, w, d] of [[-25, 23.2, 133, .5], [-25, 32.8, 133, .5], [95, 23.2, 98, .5], [95, 32.8, 98, .5],
+                               [41.2, -46, .5, 138], [50.8, -46, .5, 138], [41.2, 70, .5, 75], [50.8, 70, .5, 75]]) {
+    const m = box(scene, w, 0.22, d, curb, x, 0.11, z); m.castShadow = false;
+  }
+  // เส้นประกลางถนน
+  for (let x = -100; x < 150; x += 6) if (Math.abs(x - 46) > 9) box(scene, 3, 0.02, 0.18, white, x, 0.07, 28).castShadow = false;
+  for (let z = -110; z < 150; z += 6) if (Math.abs(z - 28) > 9) box(scene, 0.18, 0.02, 3, white, 46, 0.07, z).castShadow = false;
+  // ทางม้าลาย
+  for (let i = -3.5; i <= 3.5; i += 1) {
+    box(scene, 2.4, 0.02, 0.55, white, 37.5, 0.07, 28 + i).castShadow = false;
+    box(scene, 0.55, 0.02, 2.4, white, 46 + i, 0.07, 19.5).castShadow = false;
+  }
+  // ช่องจอดรถข้างจุดต้อนรับ
+  for (let i = 0; i < 5; i++) box(scene, 0.15, 0.02, 4, white, -40 + i * 3, 0.03, 19.5).castShadow = false;
+}
+
+/* =====================================================================
+   องค์ประกอบในงาน
+   ===================================================================== */
+function tent(x, z, color, { size = 3.2, depth, ry = 0, table = true, roofTex, items } = {}) {
+  const g = group(x, z, ry);
+  const W = size, D = depth || size, H = 2.4;
+  const leg = mat('#b9bec7', { metalness: .4, roughness: .5 });
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) cyl(g, .045, .045, H, leg, sx * W / 2, H / 2, sz * D / 2, 6);
+  const c = mat(color);
+  box(g, W, .32, .04, c, 0, H - .1, D / 2); box(g, W, .32, .04, c, 0, H - .1, -D / 2);
+  box(g, .04, .32, D, c, W / 2, H - .1, 0); box(g, .04, .32, D, c, -W / 2, H - .1, 0);
+  const roof = shade(new THREE.Mesh(PYRAMID, roofTex ? new THREE.MeshStandardMaterial({ map: roofTex, roughness: .8 }) : c));
+  roof.scale.set(W, .95, D); roof.position.y = H + .02 + .475; g.add(roof);
+  if (table) {
+    box(g, W * .7, .05, .75, '#fbfbfb', 0, .76, D * .12);
+    box(g, W * .7, .55, .02, '#f2f2f2', 0, .48, D * .12 + .37);
+    for (const sx of [-1, 1]) box(g, .05, .74, .05, '#888', sx * W * .33, .37, D * .12 - .3);
+  }
+  solid(x, z, W * .8, D * .8, ry);
+  if (items) items(g, W, D);
+  return g;
+}
+
+function person(parent, x, z, shirt, ry = 0, scale = 1) {
+  const g = group(x, z, ry, parent);
+  g.scale.setScalar(scale);
+  const skin = mat('#e0b48a');
+  box(g, .16, .8, .16, '#2d3a5a', -.1, .4, 0); box(g, .16, .8, .16, '#2d3a5a', .1, .4, 0);
+  box(g, .46, .62, .26, shirt, 0, 1.12, 0);
+  box(g, .12, .55, .12, shirt, -.3, 1.15, 0); box(g, .12, .55, .12, shirt, .3, 1.15, 0);
+  const head = shade(new THREE.Mesh(new THREE.SphereGeometry(.15, 12, 10), skin)); head.position.y = 1.6; g.add(head);
+  const hair = shade(new THREE.Mesh(new THREE.SphereGeometry(.155, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), mat('#1c1c1c'))); hair.position.y = 1.62; g.add(hair);
+  return g;
+}
+
+function standee(x, z, ry = 0, text = 'แสงนำใจ') {
+  const g = group(x, z, ry);
+  const t = canvasTex(160, 400, (c, w, h) => {
+    const gr = c.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#1556c4'); gr.addColorStop(1, '#0a2f75');
+    c.fillStyle = gr; c.fillRect(0, 0, w, h);
+    c.fillStyle = '#ffd21f'; c.fillRect(0, h * .72, w, 10);
+    c.fillStyle = '#fff'; c.textAlign = 'center'; fitText(c, text, w - 20, 34); c.fillText(text, w / 2, 70);
+    c.font = `600 22px ${FONT_H}`; c.fillText('ครั้งที่ 12', w / 2, 110);
+    c.fillText('เดิน วิ่ง ปั่น', w / 2, 300);
+  });
+  box(g, .05, 1.9, .05, '#999', 0, .95, -.04);
+  texPlane(g, .8, 2, t, 0, 1.25, 0);
+  const back = texPlane(g, .8, 2, t, 0, 1.25, -.02, Math.PI); back.material = back.material.clone();
+  box(g, .7, .04, .5, '#777', 0, .02, -.15);
+}
+
+function tree(x, z, s = 1) {
+  const g = group(x, z, Math.random() * 6);
+  g.scale.setScalar(s);
+  cyl(g, .18, .26, 2.2, '#7a5530', 0, 1.1, 0, 7);
+  const leaf = mat('#4f9b3a'), leaf2 = mat('#66b14a');
+  for (const [lx, ly, lz, r, m] of [[0, 3.1, 0, 1.6, leaf], [.8, 2.7, .3, 1.1, leaf2], [-.7, 2.8, -.4, 1.15, leaf2], [.1, 3.9, .1, 1.05, leaf2]]) {
+    const b = shade(new THREE.Mesh(new THREE.IcosahedronGeometry(r, 1), m)); b.position.set(lx, ly, lz); g.add(b);
+  }
+  solid(x, z, .7 * s, .7 * s);
+}
+
+function hedge(x, z, len, ry = 0) {
+  const g = group(x, z, ry);
+  box(g, len, .9, 1.1, '#3f8a34', 0, .45, 0);
+  for (let i = -len / 2 + .5; i < len / 2; i += 1.1) {
+    const b = shade(new THREE.Mesh(new THREE.IcosahedronGeometry(.62, 0), mat('#4c9c3c'))); b.position.set(i, .85, 0); b.scale.y = .7; g.add(b);
+  }
+  solid(x, z, len, 1.1, ry);
+}
+
+const brickTex = canvasTex(128, 64, (g, w, h) => {
+  g.fillStyle = '#d8cfc2'; g.fillRect(0, 0, w, h);
+  for (let r = 0; r < 4; r++) for (let c = -1; c < 5; c++) {
+    g.fillStyle = ['#a8553a', '#b5603f', '#9a4b33'][(r + c + 9) % 3];
+    g.fillRect(c * 32 + (r % 2) * 16 + 1, r * 16 + 1, 30, 14);
+  }
+}, [1, 1]);
+function brickWall(x, z, len, ry = 0, h = 1) {
+  const t = brickTex.clone(); t.needsUpdate = true; t.repeat.set(len / 1.2, h / .6);
+  const m = box(scene, len, h, .35, new THREE.MeshStandardMaterial({ map: t, roughness: .9 }), x, h / 2, z, ry);
+  solid(x, z, len, .4, ry);
+  return m;
+}
+
+function bins(x, z, ry = 0) {
+  const g = group(x, z, ry);
+  const cols = ['#1f5fd1', '#2e9a3e', '#f2c318', '#d62f2f'];
+  cols.forEach((c, i) => {
+    const px = (i - 1.5) * .75;
+    cyl(g, .3, .26, .95, c, px, .475, 0, 14);
+    cyl(g, .33, .33, .08, c, px, .99, 0, 14);
+    box(g, .3, .12, .02, '#fff', px, .7, .29);
+  });
+  solid(x, z, 3, .7, ry);
+}
+
+function waterTable(x, z, ry = 0) {
+  const g = group(x, z, ry);
+  box(g, 3.2, .06, .8, '#f5f5f5', 0, .76, 0);
+  box(g, 3.2, .6, .02, '#1e63c9', 0, .46, .4);
+  for (const sx of [-1.45, 1.45]) box(g, .05, .74, .7, '#999', sx, .37, 0);
+  const jug = mat('#5aa9ff', { transparent: true, opacity: .75, roughness: .2 });
+  for (let i = 0; i < 3; i++) {
+    cyl(g, .2, .2, .5, jug, -1 + i, 1.05, -.1, 14);
+    cyl(g, .23, .23, .05, '#1e63c9', -1 + i, 1.33, -.1, 14);
+  }
+  const bottle = mat('#bfe4ff', { transparent: true, opacity: .8, roughness: .2 });
+  for (let i = 0; i < 12; i++) cyl(g, .035, .035, .22, bottle, -1.4 + (i % 6) * .14, .9, .25 - Math.floor(i / 6) * .1, 6);
+  // ถังน้ำแข็ง
+  box(g, .7, .5, .5, '#2f7fe0', 1.9, .25, -.1);
+  box(g, .72, .06, .52, '#fff', 1.9, .52, -.1);
+  // เครื่องกดน้ำ
+  for (const sx of [-2.1, -2.6]) { box(g, .32, 1.1, .32, '#f2f2f2', sx, .55, -.1); cyl(g, .14, .14, .4, jug, sx, 1.3, -.1, 12); }
+  solid(x, z, 5.5, 1, ry);
+}
+
+function chair(parent, x, z, ry, color = '#d8282d') {
+  const g = group(x, z, ry, parent);
+  box(g, .45, .05, .45, color, 0, .45, 0);
+  box(g, .45, .45, .05, color, 0, .7, -.2);
+  for (const sx of [-.2, .2]) for (const sz of [-.2, .2]) box(g, .04, .45, .04, '#555', sx, .22, sz);
+}
+
+/* ---------- 1 เวที ---------- */
+function buildStage() {
+  const [x, z] = POINTS[1].pos;
+  const g = group(x, z, 0);   // หน้าเวทีหันไปทาง +x
+  const black = mat('#1d1f24'), truss = mat('#c7cbd3', { metalness: .6, roughness: .35 });
+  box(g, 8, 1.2, 13, black, 0, .6, 0);
+  box(g, 8.05, .1, 13.05, '#2c2f36', 0, 1.25, 0);
+  box(g, .06, 1.1, 13, mat('#0c3a8c'), 4.02, .6, 0);
+  for (let i = 0; i < 3; i++) box(g, .5, .4 * (i + 1), 2.4, '#3a3d44', 4.25 + (2 - i) * .5, .2 * (i + 1), 0);
+  // โครง truss
+  for (const [px, pz] of [[-3.6, -6.2], [-3.6, 6.2], [3.6, -6.2], [3.6, 6.2]]) {
+    box(g, .35, 7.2, .35, truss, px, 3.6, pz);
+    for (let y = .8; y < 7; y += .7) box(g, .36, .04, .36, '#8a8f99', px, y, pz);
+  }
+  box(g, .35, .35, 12.8, truss, 3.6, 7.2, 0); box(g, .35, .35, 12.8, truss, -3.6, 7.2, 0);
+  box(g, 7.6, .35, .35, truss, 0, 7.2, 6.2); box(g, 7.6, .35, .35, truss, 0, 7.2, -6.2);
+  box(g, 8.2, .12, 13.4, '#25272c', 0, 7.45, 0);
+  // จอ LED
+  const led = canvasTex(1024, 512, (c, w, h) => {
+    const gr = c.createLinearGradient(0, 0, w, h); gr.addColorStop(0, '#0a2f75'); gr.addColorStop(1, '#1d6be0');
+    c.fillStyle = gr; c.fillRect(0, 0, w, h);
+    c.fillStyle = 'rgba(255,255,255,.12)'; for (let i = 0; i < 9; i++) { c.beginPath(); c.arc(Math.random() * w, Math.random() * h, 60 + Math.random() * 120, 0, 7); c.fill(); }
+    c.textAlign = 'center'; c.fillStyle = '#fff';
+    fitText(c, 'โครงการแสงนำใจ ไทยทั้งชาติ', w - 80, 74, 800); c.fillText('โครงการแสงนำใจ ไทยทั้งชาติ', w / 2, 140);
+    fitText(c, 'เดิน วิ่ง ปั่น ป้องกันอัมพาต', w - 80, 70, 800); c.fillText('เดิน วิ่ง ปั่น ป้องกันอัมพาต', w / 2, 240);
+    c.fillStyle = '#ffd21f'; fitText(c, 'ครั้งที่ 12 เฉลิมพระเกียรติ', w - 80, 64, 800); c.fillText('ครั้งที่ 12 เฉลิมพระเกียรติ', w / 2, 340);
+    c.fillStyle = '#fff'; c.font = `600 44px ${FONT_H}`; c.fillText('จังหวัดแพร่ · 1 พฤศจิกายน 2569', w / 2, 430);
+  });
+  box(g, .3, 4.1, 7.6, black, -3.4, 3.4, 0);
+  texPlane(g, 7.2, 3.6, led, -3.23, 3.4, 0, Math.PI / 2, { emissive: '#ffffff', emissiveMap: led, emissiveIntensity: .55 });
+  // ลำโพง
+  for (const sz of [-7.4, 7.4]) for (let i = 0; i < 3; i++) {
+    box(g, 1, 1, 1, '#141518', 2.2, .5 + i * 1.02, sz);
+    cyl(g, .3, .3, .02, '#3d4048', 2.71, .5 + i * 1.02, sz, 16).rotation.z = Math.PI / 2;
+  }
+  // แท่นพูด
+  box(g, .6, 1.1, .8, '#7a4f2b', 2.4, 1.8, -3);
+  cyl(g, .02, .02, .4, '#333', 2.6, 2.5, -3, 6);
+  // ไฟเวที
+  for (let i = -5; i <= 5; i += 2.5) box(g, .3, .35, .3, '#111', 3.6, 6.8, i);
+  solid(x, z, 8.5, 16);
+  for (let i = 0; i < 4; i++) person(g, 1.5 + (i % 2), -1 + i * 1.2, ['#1556c4', '#ffffff', '#e3262b', '#ffd21f'][i], Math.PI / 2).position.y = 1.25;
+}
+
+/* ---------- 2 จุดต้อนรับผู้บริหาร ---------- */
+function buildReception() {
+  const [x, z] = POINTS[2].pos;
+  const g = group(x, z, -.05);
+  for (const [tx, tz] of [[-2.6, -1.2], [2.4, -1.2]]) {
+    box(g, 4, .06, .9, '#ffffff', tx, .76, tz);
+    box(g, 4, .7, .02, '#e8eefb', tx, .42, tz + .45);
+    box(g, 4.02, .16, .03, '#ffd21f', tx, .68, tz + .47);
+    for (let i = 0; i < 5; i++) chair(g, tx - 1.6 + i * .8, tz - .8, 0, '#ffffff');
+    for (let i = 0; i < 3; i++) { const v = cyl(g, .07, .05, .18, '#d4af37', tx - 1.2 + i * 1.2, .88, tz, 10); v.castShadow = false; }
+  }
+  // ม้านั่งไม้
+  for (let r = 0; r < 2; r++) for (const bx of [-2.6, 2.6]) {
+    box(g, 4.2, .08, .45, '#9b6a3c', bx, .46, -3.4 - r * 1.3);
+    box(g, 4.2, .4, .06, '#9b6a3c', bx, .75, -3.62 - r * 1.3);
+    for (const sx of [-1.8, 1.8]) box(g, .08, .44, .4, '#6d4826', bx + sx, .22, -3.4 - r * 1.3);
+  }
+  // กรวยจราจร
+  for (let i = 0; i < 6; i++) {
+    const cx = -4.5 + i * 1.8;
+    cyl(g, .04, .22, .7, '#ff6a00', cx, .37, 1.6, 12);
+    cyl(g, .13, .16, .1, '#ffffff', cx, .45, 1.6, 12);
+    box(g, .5, .04, .5, '#222', cx, .02, 1.6);
+  }
+  solid(x, z - 1.6, 10, 5);
+  for (let i = 0; i < 4; i++) person(g, -3.2 + i * 2, -2.1, ['#ffffff', '#1556c4', '#ffffff', '#ffd21f'][i], 0);
+}
+
+/* ---------- 3 / 8 จุดน้ำดื่ม ---------- */
+function buildWater() {
+  const [x3, z3] = POINTS[3].pos; waterTable(x3, z3, 0);
+  person(scene, x3 - .8, z3 - .9, '#1e63c9', 0); person(scene, x3 + .9, z3 - .9, '#1e63c9', 0);
+  standee(x3 + 3.6, z3 - 1.5, -.4);
+  const [x8, z8] = POINTS[8].pos; waterTable(x8, z8, -Math.PI / 2 - .05);
+  person(scene, x8 + 1, z8 - .6, '#1e63c9', -Math.PI / 2); person(scene, x8 + 1, z8 + .8, '#1e63c9', -Math.PI / 2);
+  standee(x8 - 2.5, z8 - 3.4, -Math.PI / 2 + .3);
+}
+
+/* ---------- 4 จุดฝากของ ---------- */
+function buildBaggage() {
+  const [x, z] = POINTS[4].pos;
+  tent(x, z, '#d8262a', { size: 4.2, ry: -.08, items: (g) => {
+    const colors = ['#2c3e50', '#16a085', '#8e44ad', '#e67e22', '#c0392b', '#2980b9'];
+    for (let i = 0; i < 6; i++) box(g, .45, .3, .3, colors[i], -1.3 + i * .5, 1, .45);
+    box(g, 2.4, 1.4, .4, '#9aa2ad', 0, .7, -1.5);
+    for (let i = 0; i < 8; i++) box(g, .4, .28, .3, colors[i % 6], -1 + (i % 4) * .6, .35 + Math.floor(i / 4) * .55, -1.4);
+    person(g, -.6, -.3, '#e3262b', 0); person(g, .7, -.3, '#e3262b', 0);
+  } });
+  standee(x + 4.2, z - 1, -.3);
+  const sign = canvasTex(512, 128, (c, w, h) => {
+    c.fillStyle = '#fff'; c.fillRect(0, 0, w, h); c.fillStyle = '#d8262a'; c.textAlign = 'center';
+    fitText(c, 'ฝากของ / ลงทะเบียนรับรางวัล', w - 30, 52); c.fillText('ฝากของ / ลงทะเบียนรับรางวัล', w / 2, 82);
+  });
+  texPlane(scene, 3.4, .85, sign, x, 2.85, z + 2.16, 0);
+}
+
+/* ---------- 5 ซุ้มปล่อยตัว ---------- */
+function buildStart() {
+  const [x, z] = POINTS[5].pos;
+  const g = group(x, z, 0);
+  const brick = (px) => {
+    const t = brickTex.clone(); t.needsUpdate = true; t.repeat.set(1.2, 6);
+    box(g, 1.2, 5.4, 1.2, new THREE.MeshStandardMaterial({ map: t, roughness: .9 }), 0, 2.7, px);
+    box(g, 1.4, .25, 1.4, '#7c3a26', 0, 5.5, px);
+  };
+  brick(-5.4); brick(5.4);
+  solid(x, z - 5.4, 1.4, 1.4); solid(x, z + 5.4, 1.4, 1.4);
+  const bannerTex = canvasTex(1024, 160, (c, w, h) => {
+    const gr = c.createLinearGradient(0, 0, w, 0); gr.addColorStop(0, '#0a2f75'); gr.addColorStop(.5, '#1d6be0'); gr.addColorStop(1, '#0a2f75');
+    c.fillStyle = gr; c.fillRect(0, 0, w, h);
+    c.fillStyle = '#ffd21f'; c.fillRect(0, 0, w, 10); c.fillRect(0, h - 10, w, 10);
+    c.fillStyle = '#fff'; c.textAlign = 'center'; c.font = `800 104px ${FONT_H}`; c.fillText('START', w / 2, 118);
+  });
+  box(g, .5, 1.5, 11.6, '#0c3a8c', 0, 5.2, 0);
+  texPlane(g, 11.4, 1.4, bannerTex, .26, 5.2, 0, Math.PI / 2);
+  texPlane(g, 11.4, 1.4, bannerTex, -.26, 5.2, 0, -Math.PI / 2);
+  // เส้นสตาร์ทบนถนน
+  box(scene, .6, .02, 9, '#ffffff', x + .2, .075, z).castShadow = false;
+  for (let i = 0; i < 9; i++) box(scene, .3, .021, .5, i % 2 ? '#111' : '#fff', x + .65, .076, z - 4.25 + i * 1.06).castShadow = false;
+}
+
+/* ---------- 6 / 14 ห้องน้ำ ---------- */
+function toilet(x, z, ry) {
+  const g = group(x, z, ry);
+  box(g, 6.4, 2.5, 2.5, '#6fb7f0', 0, 1.65, 0);
+  box(g, 6.6, .18, 2.7, '#ffffff', 0, 3, 0);
+  box(g, 6.4, .3, 2.5, '#2d5f9a', 0, .55, 0);
+  for (let i = 0; i < 4; i++) {
+    box(g, 1.1, 1.9, .05, '#3c86cf', -2.3 + i * 1.53, 1.6, 1.27);
+    box(g, .9, .25, .04, '#cfe8ff', -2.3 + i * 1.53, 2.45, 1.3);
+    box(g, .06, .12, .06, '#ddd', -2.0 + i * 1.53, 1.5, 1.32);
+  }
+  for (const wx of [-2, 2]) for (const wz of [-1.1, 1.1]) { const w = cyl(g, .4, .4, .3, '#222', wx, .4, wz, 14); w.rotation.x = Math.PI / 2; }
+  box(g, 6, .12, .8, '#9aa0a8', 0, .25, 1.75);
+  const sign = canvasTex(512, 128, (c, w, h) => {
+    c.fillStyle = '#ffffff'; c.fillRect(0, 0, w, h); c.fillStyle = '#0c3a8c'; c.textAlign = 'center';
+    c.font = `700 72px ${FONT_H}`; c.fillText('ห้องน้ำ', w / 2, 90);
+  });
+  texPlane(g, 2.4, .6, sign, 0, 3.4, 1.0);
+  box(g, 2.4, .62, .04, '#0c3a8c', 0, 3.4, .97);
+  solid(x, z, 6.6, 3.4, ry);
+}
+function buildToilets() {
+  const [x6, z6] = POINTS[6].pos; toilet(x6, z6, Math.PI);
+  const [x14, z14] = POINTS[14].pos; toilet(x14, z14, Math.PI / 2 + .1);
+}
+
+/* ---------- 7 ปฐมพยาบาล ---------- */
+function buildFirstAid() {
+  const [x, z] = POINTS[7].pos;
+  const crossTex = canvasTex(256, 256, (c, w, h) => {
+    c.fillStyle = '#ffffff'; c.fillRect(0, 0, w, h);
+    c.fillStyle = '#e3262b'; c.fillRect(w * .42, h * .2, w * .16, h * .6); c.fillRect(w * .2, h * .42, w * .6, h * .16);
+  });
+  tent(x, z, '#f7f7f7', { size: 4.5, depth: 4, ry: 0, roofTex: crossTex, items: (g) => {
+    box(g, 1.9, .5, .7, '#2f7fe0', -1, .55, -1.2);
+    box(g, 1.9, .08, .7, '#ffffff', -1, .82, -1.2);
+    person(g, .8, -.5, '#ffffff', Math.PI); person(g, -.6, .4, '#ffffff', 0);
+  } });
+  const sign = canvasTex(512, 128, (c, w, h) => {
+    c.fillStyle = '#e3262b'; c.fillRect(0, 0, w, h); c.fillStyle = '#fff'; c.textAlign = 'center';
+    c.fillStyle = '#fff'; c.fillRect(34, 28, 72, 72); c.fillStyle = '#e3262b'; c.fillRect(60, 36, 20, 56); c.fillRect(42, 54, 56, 20);
+    c.fillStyle = '#fff'; c.font = `700 62px ${FONT_H}`; c.fillText('ปฐมพยาบาล', w / 2 + 50, 86);
+  });
+  texPlane(scene, 3.2, .8, sign, x, 2.8, z - 2.05, Math.PI);
+  // รถพยาบาล
+  const a = group(x + 2, z + 6, Math.PI / 2 + .45);
+  box(a, 4.4, 2.2, 2.1, '#fbfbfb', -.4, 1.55, 0);
+  box(a, 1.5, 1.4, 2.0, '#fbfbfb', 2.45, 1.15, 0);
+  box(a, .04, .7, 1.8, mat('#2b3a4f', { roughness: .2, metalness: .3 }), 3.2, 1.45, 0);
+  box(a, 4.42, .25, 2.12, '#e3262b', -.4, 1.2, 0);
+  box(a, 1.52, .2, 2.02, '#e3262b', 2.45, .95, 0);
+  box(a, .7, .18, 1.2, '#1f6fe0', 1.5, 2.75, 0);
+  box(a, .4, .16, .5, '#e3262b', -2.2, 2.72, 0);
+  for (const wx of [-1.7, 2.2]) for (const wz of [-1, 1]) { const w = cyl(a, .42, .42, .3, '#1b1b1b', wx, .42, wz, 14); w.rotation.x = Math.PI / 2; }
+  const plus = canvasTex(128, 128, (c, w, h) => { c.fillStyle = '#fff'; c.fillRect(0, 0, w, h); c.fillStyle = '#e3262b'; c.fillRect(48, 18, 32, 92); c.fillRect(18, 48, 92, 32); });
+  texPlane(a, .9, .9, plus, -.6, 1.75, 1.06); texPlane(a, .9, .9, plus, -.6, 1.75, -1.06, Math.PI);
+  solid(x + 2, z + 6, 6.6, 3.6, Math.PI / 2 + .45);
+  // รั้วเหล็ก
+  for (let i = 0; i < 26; i++) box(scene, .06, 1.2, .06, '#3b3b3b', x - 12 + i * .5, .6, z - 3.3).castShadow = false;
+  box(scene, 13, .06, .06, '#3b3b3b', x - 5.75, 1.15, z - 3.3);
+}
+
+/* ---------- 9 / 11 ขยะ ---------- */
+function buildBins() {
+  const [x9, z9] = POINTS[9].pos; bins(x9, z9, Math.PI / 2);
+  const [x11, z11] = POINTS[11].pos; bins(x11, z11, 0);
+}
+
+/* ---------- 10 จุดอาหาร ---------- */
+function buildFood() {
+  const [x, z] = POINTS[10].pos;
+  const foods = ['#e67e22', '#c0392b', '#f1c40f', '#27ae60', '#ecf0f1'];
+  for (let i = 0; i < 4; i++) {
+    const tz = z + 9 - i * 5.6;
+    tent(x, tz, '#f6c315', { size: 4.4, ry: -Math.PI / 2, items: (g) => {
+      for (let k = 0; k < 4; k++) cyl(g, .22, .2, .22, foods[(i + k) % 5], -1.1 + k * .72, .9, .55, 12);
+      person(g, -.6, -.4, '#ffd21f', 0); person(g, .8, -.4, '#ffffff', 0);
+    } });
+  }
+  for (let i = 0; i < 3; i++) person(scene, x - 3.4, z + 6 - i * 4.5, ['#ff6b9a', '#3fb24f', '#1e63c9'][i], Math.PI / 2);
+  // เสาขาว + ราวกั้น
+  for (let i = 0; i < 9; i++) {
+    cyl(scene, .12, .12, 1.4, '#f4f4f4', x + 6.2, .7, z + 13 - i * 3.4, 8);
+    cyl(scene, .16, .16, .1, '#f4f4f4', x + 6.2, 1.45, z + 13 - i * 3.4, 8);
+  }
+}
+
+/* ---------- 12 จุดกิจกรรม นศ.พยาบาล ---------- */
+function buildNursing() {
+  const [x, z] = POINTS[12].pos;
+  tent(x, z, '#ec3fc0', { size: 5, ry: -.1, items: (g) => {
+    for (let i = 0; i < 4; i++) chair(g, -1.4 + i * .95, 1.4, Math.PI, '#ffffff');
+    box(g, .5, 1.2, .5, '#ffffff', 1.8, .6, -1.5);
+    person(g, -1, -.5, '#ffffff', 0); person(g, .4, -.5, '#ffffff', 0); person(g, 1.5, .2, '#ffb3d9', -.4);
+  } });
+  standee(x - 4, z - 2, .3); standee(x + 4.3, z - 2.2, -.3);
+  const sign = canvasTex(512, 128, (c, w, h) => {
+    c.fillStyle = '#ec3fc0'; c.fillRect(0, 0, w, h); c.fillStyle = '#fff'; c.textAlign = 'center';
+    fitText(c, 'กิจกรรม นศ.พยาบาล', w - 30, 60); c.fillText('กิจกรรม นศ.พยาบาล', w / 2, 84);
+  });
+  texPlane(scene, 3.4, .85, sign, x + .25, 2.85, z + 2.53, -.1);
+}
+
+/* ---------- 13 หลังคาทางเดิน + นิทรรศการ ---------- */
+function buildWalkway() {
+  const roof = mat('#2a2b2f', { roughness: .7 }), col = mat('#f3f3ef'), floor = mat('#cfc8bb');
+  const segs = [
+    { x0: -36, x1: 26, z: -31, dir: 'x' },   // ด้านบน
+    { z0: -31, z1: -2, x: -36, dir: 'z' },   // ด้านซ้าย
+  ];
+  const W = 6, H = 3.6;
+  for (const s of segs) {
+    if (s.dir === 'x') {
+      const len = s.x1 - s.x0, cx = (s.x0 + s.x1) / 2;
+      box(scene, len, .1, W, floor, cx, .05, s.z).castShadow = false;
+      for (let px = s.x0; px <= s.x1 + .01; px += 4) for (const dz of [-W / 2 + .3, W / 2 - .3]) box(scene, .3, H, .3, col, px, H / 2, s.z + dz);
+      const r1 = box(scene, len + 1, .15, W / 2 + .6, roof, cx, H + .35, s.z - W / 4 - .1); r1.rotation.x = -.2;
+      const r2 = box(scene, len + 1, .15, W / 2 + .6, roof, cx, H + .35, s.z + W / 4 + .1); r2.rotation.x = .2;
+      box(scene, len, .25, .25, '#e8e4da', cx, H, s.z + W / 2 - .3);
+      solid(cx, s.z - W / 2 + .3, len, .5);
+    } else {
+      const len = s.z1 - s.z0, cz = (s.z0 + s.z1) / 2;
+      box(scene, W, .1, len, floor, s.x, .05, cz).castShadow = false;
+      for (let pz = s.z1; pz >= s.z0 + 3; pz -= 4) for (const dx of [-W / 2 + .3, W / 2 - .3]) box(scene, .3, H, .3, col, s.x + dx, H / 2, pz);
+      const r1 = box(scene, W / 2 + .6, .15, len - 2.2, roof, s.x - W / 4 - .1, H + .35, cz + 1.1); r1.rotation.z = .2;
+      const r2 = box(scene, W / 2 + .6, .15, len - 2.2, roof, s.x + W / 4 + .1, H + .35, cz + 1.1); r2.rotation.z = -.2;
+      box(scene, .25, .25, len, '#e8e4da', s.x + W / 2 - .3, H, cz);
+      solid(s.x - W / 2 + .3, cz, .5, len);
+    }
+  }
+  // บอร์ดนิทรรศการ
+  const topics = [
+    ['รู้ทันอัมพาต', 'F.A.S.T.', '#1556c4'], ['หน้าเบี้ยว', 'ปากตก', '#e3262b'], ['แขนขาอ่อนแรง', 'ยกไม่ขึ้น', '#0f8a5f'],
+    ['พูดไม่ชัด', 'รีบโทร 1669', '#e3262b'], ['ออกกำลังกาย', 'สม่ำเสมอ', '#1556c4'], ['ลดหวาน มัน เค็ม', 'ห่างไกลโรค', '#f39c12'],
+    ['วัดความดัน', 'ทุกปี', '#8e44ad'], ['งดบุหรี่ สุรา', 'ลดเสี่ยง', '#0f8a5f'],
+  ];
+  topics.forEach(([t1, t2, color], i) => {
+    const tex = canvasTex(256, 360, (c, w, h) => {
+      c.fillStyle = '#ffffff'; c.fillRect(0, 0, w, h);
+      c.fillStyle = color; c.fillRect(0, 0, w, 90);
+      c.fillStyle = '#fff'; c.textAlign = 'center'; fitText(c, t1, w - 20, 40); c.fillText(t1, w / 2, 60);
+      c.fillStyle = color; fitText(c, t2, w - 24, 46); c.fillText(t2, w / 2, 170);
+      c.fillStyle = 'rgba(0,0,0,.08)'; c.fillRect(24, 210, w - 48, 120);
+      c.fillStyle = color; for (let k = 0; k < 4; k++) c.fillRect(40, 228 + k * 26, (w - 80) * (0.5 + Math.random() * .5), 10);
+    });
+    const bx = -26 + i * 5.4, bz = -31.8;
+    box(scene, 1.9, 2.4, .1, '#b8bec8', bx, 1.6, bz - .07);
+    texPlane(scene, 1.7, 2.3, tex, bx, 1.6, bz);
+    box(scene, .06, .4, .06, '#999', bx - .8, .2, bz - .07); box(scene, .06, .4, .06, '#999', bx + .8, .2, bz - .07);
+  });
+  // โต๊ะลงนามถวายพระพร
+  const [px, pz] = POINTS[13].pos;
+  const g = group(px, pz, 0);
+  box(g, 3.2, .06, .9, '#f6d54a', 0, .78, 0);
+  box(g, 3.2, .72, .02, '#f2c318', 0, .42, .45);
+  for (const sx of [-1.5, 1.5]) box(g, .05, .76, .8, '#998', sx, .38, 0);
+  box(g, .6, .02, .4, '#ffffff', -.6, .82, 0); box(g, .6, .02, .4, '#ffffff', .4, .82, 0);
+  const frame = canvasTex(320, 420, (c, w, h) => {
+    const gr = c.createLinearGradient(0, 0, w, h); gr.addColorStop(0, '#c9971c'); gr.addColorStop(.5, '#ffe58a'); gr.addColorStop(1, '#b8860b');
+    c.fillStyle = gr; c.fillRect(0, 0, w, h);
+    c.fillStyle = '#fff8e1'; c.fillRect(26, 26, w - 52, h - 52);
+    c.fillStyle = '#b8860b'; c.textAlign = 'center'; fitText(c, 'ลงนามถวายพระพร', w - 70, 40); c.fillText('ลงนามถวายพระพร', w / 2, h / 2 + 14);
+  });
+  box(g, 1.7, 2.1, .1, '#b8860b', 0, 1.9, -1.15);
+  texPlane(g, 1.6, 2, frame, 0, 1.9, -1.09);
+  for (const sx of [-1.6, 1.6]) { cyl(g, .25, .3, .7, '#f2c318', sx, .35, -1, 12); const fl = shade(new THREE.Mesh(new THREE.IcosahedronGeometry(.35, 0), mat('#ffcc00'))); fl.position.set(sx, .9, -1); g.add(fl); }
+  person(g, -.6, 1.2, '#ffd21f', Math.PI); person(g, .7, 1.3, '#ffffff', Math.PI);
+  solid(px, pz, 3.4, 1);
+  // บอร์ดด้านซ้าย
+  for (let i = 0; i < 3; i++) {
+    const tex = canvasTex(256, 360, (c, w, h) => {
+      c.fillStyle = '#fff'; c.fillRect(0, 0, w, h); c.fillStyle = '#0c3a8c'; c.fillRect(0, 0, w, 90);
+      c.fillStyle = '#fff'; c.textAlign = 'center'; c.font = `600 38px ${FONT_H}`; c.fillText('นิทรรศการ', w / 2, 60);
+      c.fillStyle = '#0c3a8c'; fitText(c, ['สุขภาพดี', 'เดิน วิ่ง ปั่น', 'ใส่ใจหัวใจ'][i], w - 24, 44); c.fillText(['สุขภาพดี', 'เดิน วิ่ง ปั่น', 'ใส่ใจหัวใจ'][i], w / 2, 170);
+    });
+    const bz = -24 + i * 6.5;
+    box(scene, .1, 2.4, 1.9, '#b8bec8', -38.4, 1.6, bz);
+    texPlane(scene, 1.7, 2.3, tex, -38.33, 1.6, bz, Math.PI / 2);
+  }
+}
+
+/* ---------- 15 Back drop ---------- */
+function buildBackdrop() {
+  const [x, z] = POINTS[15].pos;
+  const g = group(x, z, Math.PI / 2 - .35);
+  const tex = canvasTex(1024, 512, (c, w, h) => {
+    const gr = c.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#6ec3ff'); gr.addColorStop(.6, '#e6f5ff'); gr.addColorStop(1, '#ffffff');
+    c.fillStyle = gr; c.fillRect(0, 0, w, h);
+    c.fillStyle = '#0c3a8c'; c.textAlign = 'center';
+    fitText(c, 'แสงนำใจ ไทยทั้งชาติ', w - 100, 96, 800); c.fillText('แสงนำใจ ไทยทั้งชาติ', w / 2, 120);
+    c.fillStyle = '#e3262b'; fitText(c, 'เดิน วิ่ง ปั่น ป้องกันอัมพาต ครั้งที่ 12', w - 100, 60, 800); c.fillText('เดิน วิ่ง ปั่น ป้องกันอัมพาต ครั้งที่ 12', w / 2, 210);
+    c.fillStyle = '#0c3a8c'; c.font = `600 44px ${FONT_H}`; c.fillText('จังหวัดแพร่ · 1 พ.ย. 2569', w / 2, 280);
+    // นักวิ่ง
+    ['#1556c4', '#ff3fa0', '#2eb84b', '#8b4fd8'].forEach((col, i) => {
+      const bx = 280 + i * 150, by = 400; c.fillStyle = col;
+      c.beginPath(); c.arc(bx, by - 70, 18, 0, 7); c.fill();
+      c.lineWidth = 18; c.lineCap = 'round'; c.strokeStyle = col;
+      c.beginPath(); c.moveTo(bx - 6, by - 48); c.lineTo(bx - 18, by + 10); c.lineTo(bx - 50, by + 50); c.moveTo(bx - 18, by + 10); c.lineTo(bx + 20, by + 40); c.lineTo(bx + 14, by + 76);
+      c.moveTo(bx - 8, by - 36); c.lineTo(bx + 30, by - 10); c.moveTo(bx - 8, by - 36); c.lineTo(bx - 44, by - 20); c.stroke();
+    });
+    c.fillStyle = '#ffd21f'; c.fillRect(0, h - 20, w, 20);
+  });
+  box(g, 6.2, 3.2, .12, '#1d1f24', 0, 2.1, -.08);
+  texPlane(g, 6, 3, tex, 0, 2.1, 0);
+  for (const sx of [-3, 3]) { box(g, .1, 3.7, .1, '#666', sx, 1.85, -.2); box(g, .1, .05, 1.2, '#666', sx, .03, -.2); }
+  solid(x, z, 6.4, 1.2, Math.PI / 2 - .35);
+  person(scene, x + 1.3, z + .9, '#ff6b9a', Math.PI / 2 - .35);
+  person(scene, x + .9, z - .4, '#1e63c9', Math.PI / 2 - .35);
+  person(scene, x + 5.5, z + 2.3, '#e3262b', -Math.PI / 2 - .35);
+}
+
+/* ---------- 16 อาหาร ว.เอกชน ---------- */
+function buildPrivateFood() {
+  const [x, z] = POINTS[16].pos;
+  const stripes = canvasTex(256, 64, (c, w, h) => { for (let i = 0; i < 16; i++) { c.fillStyle = i % 2 ? '#ffffff' : '#d8262a'; c.fillRect(i * 16, 0, 16, h); } });
+  tent(x - 2.4, z, '#d8262a', { size: 4, roofTex: stripes, items: (g) => { person(g, 0, -.4, '#ffffff', 0); cyl(g, .3, .3, .3, '#b0b6bf', .8, .94, .4, 14); } });
+  tent(x + 2.4, z + .2, '#2ea44f', { size: 4, items: (g) => { person(g, 0, -.4, '#2ea44f', 0); for (let k = 0; k < 3; k++) cyl(g, .2, .18, .2, ['#e67e22', '#f1c40f', '#ecf0f1'][k], -.7 + k * .7, .9, .5, 12); } });
+  standee(x + 5.5, z - 2, -.4);
+  person(scene, x - 2, z + 3.4, '#8b4fd8', Math.PI); person(scene, x + 2.8, z + 3.6, '#1e63c9', Math.PI);
+}
+
+/* ---------- รั้ว พุ่มไม้ ต้นไม้ ---------- */
+function buildLandscape() {
+  // ด้านขวาของลาน: รั้วอิฐ + พุ่มไม้ (ติดถนน B)
+  brickWall(37.5, -4, 48, Math.PI / 2, 1.2);
+  hedge(35.8, -4, 46, Math.PI / 2);
+  for (let z = -27; z <= 20; z += 4.7) { box(scene, .7, 1.8, .7, '#f2f2f0', 37.5, .9, z); box(scene, .85, .15, .85, '#d9d9d6', 37.5, 1.85, z); }
+  // ด้านหน้า (ติดถนน A) ช่วงขวา
+  brickWall(31, 22.6, 12, 0, .9); hedge(31, 21.5, 11);
+  hedge(-36, 22, 8);
+  // ต้นไม้
+  for (const [x, z, s] of [[-12, 13, 1.1], [-.5, 11, 1], [27, -25, 1.25], [-40, 17, 1.1], [33, 18, .95], [-44, -18, 1.2],
+                           [-44, 4, 1.1], [30, -33, 1.1], [56, 30, 1], [56, -40, 1.2], [70, -30, 1.1],
+                           [-6, 40, 1.1], [30, 48, 1.1], [-50, 40, 1.3], [-60, -10, 1.3], [-62, 12, 1.2], [5, -42, 1.3], [-25, -44, 1.2], [60, 62, 1.1]]) {
+    tree(x, z, s);
+  }
+  // เสาไฟ
+  for (const [x, z] of [[-30, 23.8], [-2, 23.8], [24, 23.8], [41, -10], [41, -40], [52, 8]]) {
+    cyl(scene, .1, .14, 8, '#8d939c', x, 4, z, 8);
+    box(scene, .2, .12, 1.6, '#8d939c', x, 7.9, z + (z > 20 ? .8 : 0));
+    box(scene, .4, .18, .6, '#e8e8e8', x, 7.8, z + (z > 20 ? 1.5 : 0));
+  }
+}
+
+/* ---------- อาคารรอบงาน ---------- */
+function windowTex(cols, rows, wall = '#f1e6cf', glass = '#7fb0d8', frame = '#ffffff') {
+  return canvasTex(cols * 32, rows * 40, (c, w, h) => {
+    c.fillStyle = wall; c.fillRect(0, 0, w, h);
+    for (let r = 0; r < rows; r++) for (let k = 0; k < cols; k++) {
+      c.fillStyle = frame; c.fillRect(k * 32 + 5, r * 40 + 7, 22, 26);
+      c.fillStyle = glass; c.fillRect(k * 32 + 7, r * 40 + 9, 18, 22);
+    }
+  });
+}
+function gableHouse(x, z, ry, w, d, h, wall, roofColor) {
+  const g = group(x, z, ry);
+  const t = windowTex(Math.max(2, Math.round(w / 2.5)), Math.max(1, Math.round(h / 3)), wall);
+  const wm = new THREE.MeshStandardMaterial({ map: t, roughness: .85 });
+  box(g, w, h, d, [wm, wm, mat(wall), mat(wall), wm, wm], 0, h / 2, 0);
+  const shape = new THREE.Shape(); shape.moveTo(-d / 2 - .4, 0); shape.lineTo(d / 2 + .4, 0); shape.lineTo(0, d * .42); shape.lineTo(-d / 2 - .4, 0);
+  const rg = new THREE.ExtrudeGeometry(shape, { depth: w + .8, bevelEnabled: false });
+  const r = shade(new THREE.Mesh(rg, mat(roofColor))); r.rotation.y = Math.PI / 2; r.position.set(-w / 2 - .4, h, 0); g.add(r);
+  box(g, 1, 2, .05, '#6d4826', w * .2, 1, d / 2 + .01);
+  solid(x, z, w, d, ry);
+}
+function buildBuildings() {
+  // ศาลากลาง
+  const g = group(66, 2, 0);
+  const t = windowTex(14, 3, '#efe3c8', '#5f8fbf', '#ffffff');
+  const wm = new THREE.MeshStandardMaterial({ map: t, roughness: .85 });
+  const plain = mat('#e6d7b8');
+  box(g, 14, 11, 34, [plain, wm, plain, plain, plain, plain], 0, 5.5, 0);   // ด้านหน้า (-x) มีหน้าต่าง
+  box(g, 15, .6, 35, '#b0733f', 0, 11.3, 0);
+  const rf = shade(new THREE.Mesh(PYRAMID, mat('#7b3b25'))); rf.scale.set(15, 4, 35); rf.position.y = 13.6; g.add(rf);
+  // ป้าย
+  const sign = canvasTex(512, 128, (c, w, h) => {
+    c.fillStyle = '#1b2a4a'; c.fillRect(0, 0, w, h); c.strokeStyle = '#ffd21f'; c.lineWidth = 6; c.strokeRect(6, 6, w - 12, h - 12);
+    c.fillStyle = '#fff'; c.textAlign = 'center'; c.font = `700 74px ${FONT_H}`; c.fillText('ศาลากลาง', w / 2, 92);
+  });
+  box(g, .3, 2.2, 8.4, '#1b2a4a', -7.2, 12.2, 0);
+  texPlane(g, 8.2, 2.05, sign, -7.37, 12.2, 0, -Math.PI / 2);
+  box(g, 5, 4, 6, '#efe3c8', -9, 2, 0);
+  for (let i = -2; i <= 2; i++) cyl(g, .3, .3, 4, '#ffffff', -11.3, 2, i * 1.3, 10);
+  box(g, 5.5, .4, 6.8, '#c79a64', -9, 4.2, 0);
+  solid(66, 2, 14, 34); solid(57, 2, 5, 6);
+  // เสาธง
+  cyl(scene, .08, .1, 12, '#dcdcdc', 54, 6, -14, 8);
+  const flag = canvasTex(150, 100, (c, w, h) => { ['#a51931', '#f4f5f8', '#2d2a4a', '#2d2a4a', '#f4f5f8', '#a51931'].forEach((col, i) => { c.fillStyle = col; c.fillRect(0, i * h / 6, w, h / 6 + 1); }); });
+  texPlane(scene, 2.4, 1.6, flag, 54, 11, -12.8, Math.PI / 2, { side: THREE.DoubleSide });
+  // บ้านเรือน
+  gableHouse(-1, 41.5, 0, 7, 6, 4.5, '#f2ead8', '#8a4a2c');
+  gableHouse(22, 42, .04, 8, 6.5, 4.8, '#f6f0e1', '#a2542f');
+  gableHouse(14, 58, 0, 9, 7, 4.5, '#f4efe6', '#7d4a33');
+  gableHouse(62, 45, Math.PI / 2, 10, 8, 6, '#f7f7f7', '#4e5a6b');
+  gableHouse(-30, 42, 0, 8, 7, 4.5, '#efe7d6', '#8a4a2c');
+  gableHouse(-55, 50, .1, 9, 7, 5, '#f1e9da', '#6f4a3a');
+  gableHouse(-62, -32, 0, 10, 8, 6, '#f1e9da', '#5a6a7a');
+  gableHouse(10, -50, 0, 12, 8, 6, '#f2ead8', '#8a4a2c');
+  gableHouse(82, 46, 0, 9, 8, 5, '#f2ead8', '#7d4a33');
+}
+
+/* ---------- ผู้คนทั่วไป ---------- */
+function buildCrowd() {
+  const shirts = ['#1556c4', '#ffffff', '#e3262b', '#ffd21f', '#ff6b9a', '#3fb24f', '#8b4fd8', '#1e63c9'];
+  const spots = [[-8, 6], [-6, 4], [12, 12], [14, 10], [16, -2], [10, -8], [-16, 2], [-20, 8], [-14, -4], [2, 0], [-2, -6],
+                 [8, 18], [16, 19], [18, 17], [-26, 14], [-6, -22], [4, -26], [12, -27], [-22, -26], [-30, -14], [-32, -22], [6, 14]];
+  spots.forEach(([x, z], i) => {
+    const p = person(scene, x + (Math.random() - .5), z + (Math.random() - .5), shirts[i % shirts.length], Math.random() * 6.28, .95 + Math.random() * .1);
+    IDLE.push({ g: p, ph: Math.random() * 6 });
+  });
+}
+const IDLE = [];
+
+/* ---------- นักวิ่งจำลองบนถนน ---------- */
+const RUNNER_PATH = [[-95, 0], [46, 0], [46, -110]];   // วิ่งจากซ้ายผ่านซุ้ม START ไปเลี้ยวขวาที่สี่แยก
+const runnerGroup = new THREE.Group(); scene.add(runnerGroup);
+const RUNNERS = [];
+const PATH_LEN = (() => { let L = 0; for (let i = 1; i < RUNNER_PATH.length; i++) L += Math.hypot(RUNNER_PATH[i][0] - RUNNER_PATH[i - 1][0], RUNNER_PATH[i][1] - RUNNER_PATH[i - 1][1]); return L; })();
+function pathAt(d) {
+  for (let i = 1; i < RUNNER_PATH.length; i++) {
+    const [ax, az] = RUNNER_PATH[i - 1], [bx, bz] = RUNNER_PATH[i];
+    const L = Math.hypot(bx - ax, bz - az);
+    if (d <= L || i === RUNNER_PATH.length - 1) { const t = Math.min(d / L, 1); return { x: ax + (bx - ax) * t, z: az + (bz - az) * t, a: Math.atan2(bx - ax, bz - az), seg: i }; }
+    d -= L;
+  }
+}
+function buildRunners() {
+  const shirts = ['#1556c4', '#ff3fa0', '#2eb84b', '#8b4fd8', '#ffd21f', '#e3262b', '#ffffff', '#00a6c8'];
+  for (let i = 0; i < 26; i++) {
+    const g = new THREE.Group();
+    const shirt = shirts[i % shirts.length];
+    const legL = new THREE.Group(), legR = new THREE.Group(), armL = new THREE.Group(), armR = new THREE.Group();
+    legL.position.set(-.1, .82, 0); legR.position.set(.1, .82, 0);
+    box(legL, .15, .8, .15, '#22304d', 0, -.4, 0); box(legR, .15, .8, .15, '#22304d', 0, -.4, 0);
+    box(legL, .16, .1, .28, '#f2f2f2', 0, -.78, .06); box(legR, .16, .1, .28, '#f2f2f2', 0, -.78, .06);
+    armL.position.set(-.3, 1.38, 0); armR.position.set(.3, 1.38, 0);
+    box(armL, .11, .5, .11, mat('#e0b48a'), 0, -.25, 0); box(armR, .11, .5, .11, mat('#e0b48a'), 0, -.25, 0);
+    const body = box(g, .44, .6, .25, shirt, 0, 1.12, 0);
+    box(g, .3, .22, .02, '#ffffff', 0, 1.12, .13);   // bib
+    const head = shade(new THREE.Mesh(new THREE.SphereGeometry(.15, 10, 8), mat('#e0b48a'))); head.position.y = 1.6; g.add(head);
+    const cap = shade(new THREE.Mesh(new THREE.SphereGeometry(.16, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), mat(i % 3 ? '#ffffff' : '#0c3a8c'))); cap.position.y = 1.64; g.add(cap);
+    g.add(legL, legR, armL, armR);
+    runnerGroup.add(g);
+    RUNNERS.push({ g, legL, legR, armL, armR, body, d: (i / 26) * PATH_LEN + Math.random() * 3, v: 2.4 + Math.random() * 1.6,
+                   lane: (Math.random() - .5) * 6.5, ph: Math.random() * 6 });
+  }
+}
+function updateRunners(dt, t) {
+  for (const r of RUNNERS) {
+    r.d += r.v * dt; if (r.d > PATH_LEN) r.d -= PATH_LEN;
+    const p = pathAt(r.d);
+    const ox = p.seg === 1 ? 0 : r.lane, oz = p.seg === 1 ? r.lane : 0;
+    r.g.position.set(p.x + ox, Math.abs(Math.sin(t * r.v * 2.6 + r.ph)) * .08, 28 + p.z + oz);
+    r.g.rotation.y = p.a;
+    const s = Math.sin(t * r.v * 2.6 + r.ph) * .75;
+    r.legL.rotation.x = s; r.legR.rotation.x = -s; r.armL.rotation.x = -s; r.armR.rotation.x = s;
+  }
+}
+
+/* =====================================================================
+   ป้ายหมายเลขลอยเหนือแต่ละจุด
+   ===================================================================== */
+const markers = {};
+function buildMarkers() {
+  const pinMat = new THREE.MeshBasicMaterial({ color: '#e3262b' });
+  const pinGeo = new THREE.CylinderGeometry(.05, .05, 1, 6);
+  for (const [no, p] of Object.entries(POINTS)) {
+    const el = document.createElement('div');
+    el.className = 'marker';
+    el.innerHTML = `<span class="num">${no}</span><span class="nm">${p.name}</span>`;
+    el.addEventListener('pointerdown', (e) => e.stopPropagation());
+    el.addEventListener('click', (e) => { e.stopPropagation(); stopTour(); focusPoint(+no); });
+    const obj = new CSS2DObject(el);
+    obj.position.set(p.pos[0], p.h + 1.1, p.pos[1]);
+    scene.add(obj);
+    const pin = new THREE.Mesh(pinGeo, pinMat); pin.scale.y = .9; pin.position.set(p.pos[0], p.h + .45, p.pos[1]); scene.add(pin);
+    markers[no] = { el, obj };
+  }
+}
+
+/* =====================================================================
+   การควบคุมกล้อง: บินไปยังจุด / โหมดเดิน / ทัวร์
+   ===================================================================== */
+let mode = 'orbit';
+let fly = null;         // { from, to, fromT, toT, t, dur, done }
+const ease = (t) => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+
+function flyTo(pos, target, dur = 1.8, done) {
+  fly = { from: camera.position.clone(), to: pos.clone(), fromT: currentLook(), toT: target.clone(), t: 0, dur, done };
+}
+function currentLook() {
+  if (mode === 'orbit') return controls.target.clone();
+  const d = new THREE.Vector3(); camera.getWorldDirection(d); return camera.position.clone().add(d.multiplyScalar(5));
+}
+function pointView(no) {
+  const p = POINTS[no];
+  const target = new THREE.Vector3(p.pos[0], Math.min(p.h * .35, 2.2), p.pos[1]);
+  if (mode === 'walk') {
+    const dir = new THREE.Vector3(...(p.view || [.7, 0, .75])).setY(0).normalize();
+    const back = Math.max(7, (p.dist || 18) * .5);
+    const pos = p.walkAt ? new THREE.Vector3(p.walkAt[0], EYE, p.walkAt[1]) : target.clone().add(dir.multiplyScalar(back)); pos.y = EYE;
+    [pos.x, pos.z] = collide(pos.x, pos.z);
+    target.y = 1.6;
+    return { pos, target };
+  }
+  const dir = new THREE.Vector3(...(p.view || [.7, .62, .75])).normalize();
+  return { pos: target.clone().add(dir.multiplyScalar(p.dist || 17)), target };
+}
+let activeNo = null;
+function focusPoint(no, opts = {}) {
+  const v = pointView(no);
+  flyTo(v.pos, v.target, opts.dur || 1.8, () => { if (mode === 'walk') setLookFrom(v.target); });
+  showCard(no);
+}
+function setActive(no) {
+  if (activeNo && markers[activeNo]) markers[activeNo].el.classList.remove('active');
+  activeNo = no;
+  if (no && markers[no]) markers[no].el.classList.add('active');
+  document.querySelectorAll('#legendList button').forEach((b) => b.classList.toggle('active', no != null && b.dataset.nos.split(',').includes(String(no))));
+}
+
+/* ---------- โหมดเดิน ---------- */
+const EYE = 1.65;
+let yaw = 0, pitch = 0;
+const keys = {};
+const joy = { x: 0, y: 0, active: false };
+let running = false;
+function setLookFrom(target) {
+  const d = target.clone().sub(camera.position);
+  yaw = Math.atan2(-d.x, -d.z);
+  pitch = Math.atan2(d.y, Math.hypot(d.x, d.z));
+}
+function applyLook() { camera.rotation.set(pitch, yaw, 0, 'YXZ'); }
+
+function setMode(m) {
+  if (m === mode) return;
+  mode = m;
+  document.body.classList.toggle('walk', m === 'walk');
+  document.getElementById('btnOrbit').classList.toggle('on', m === 'orbit');
+  document.getElementById('btnWalk').classList.toggle('on', m === 'walk');
+  fly = null;
+  if (m === 'walk') {
+    controls.enabled = false;
+    if (!isTouch) legendEl.classList.add('folded');
+    // เริ่มเดินจากหน้าซุ้มปล่อยตัว หันเข้าลานงาน
+    const start = new THREE.Vector3(4, EYE, 22);
+    flyTo(start, new THREE.Vector3(-6, 1.6, 6), 1.6, () => setLookFrom(new THREE.Vector3(-6, 1.6, 6)));
+    showHint(isTouch ? 'ใช้จอยซ้ายเพื่อเดิน · ลากนิ้วบนจอเพื่อหันมอง · แตะหมายเลขเพื่อเดินไปที่จุด'
+                     : 'W A S D หรือ ลูกศร เพื่อเดิน · ลากเมาส์เพื่อหันมอง · กด Shift ค้างเพื่อวิ่ง · คลิกหมายเลขเพื่อไปที่จุด', 6000);
+  } else {
+    const look = currentLook();
+    const tgt = new THREE.Vector3(look.x, 0, look.z);
+    controls.target.copy(tgt);
+    const pos = tgt.clone().add(new THREE.Vector3(30, 34, 42));
+    flyTo(pos, tgt, 1.6, () => { controls.enabled = true; });
+    showHint(isTouch ? 'ลากนิ้วเพื่อหมุน · ถ่าง/บีบสองนิ้วเพื่อซูม · ลากสองนิ้วเพื่อเลื่อน'
+                     : 'ลากเมาส์ซ้ายเพื่อหมุน · ล้อเมาส์เพื่อซูม · ลากเมาส์ขวาเพื่อเลื่อน', 5000);
+  }
+  if (activeNo && cardEl.classList.contains('show')) showCard(activeNo);   // ปรับปุ่มในการ์ดตามโหมด
+}
+
+// หันมองด้วยการลาก (เมาส์/นิ้ว) ในโหมดเดิน
+let dragId = null, lastX = 0, lastY = 0;
+renderer.domElement.addEventListener('pointerdown', (e) => {
+  stopTour(true);
+  if (mode !== 'walk') return;
+  dragId = e.pointerId; lastX = e.clientX; lastY = e.clientY;
+  renderer.domElement.setPointerCapture(e.pointerId);
+});
+renderer.domElement.addEventListener('pointermove', (e) => {
+  if (mode !== 'walk' || e.pointerId !== dragId) return;
+  const k = isTouch ? .006 : .0042;
+  yaw -= (e.clientX - lastX) * k; pitch -= (e.clientY - lastY) * k;
+  pitch = Math.max(-1.2, Math.min(1.2, pitch));
+  lastX = e.clientX; lastY = e.clientY; fly = null;
+});
+const endDrag = (e) => { if (e.pointerId === dragId) dragId = null; };
+renderer.domElement.addEventListener('pointerup', endDrag);
+renderer.domElement.addEventListener('pointercancel', endDrag);
+renderer.domElement.addEventListener('wheel', () => stopTour(true), { passive: true });
+
+addEventListener('keydown', (e) => {
+  if (e.target.closest && e.target.closest('input,textarea')) return;
+  keys[e.code] = true;
+  if (mode === 'walk' && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) e.preventDefault();
+  if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
+    stopTour(true);
+    if (mode !== 'walk' && !e.repeat && !e.code.startsWith('Arrow')) setMode('walk');
+  }
+  if (e.code === 'Escape') { hideCard(); stopTour(); }
+});
+addEventListener('keyup', (e) => { keys[e.code] = false; });
+addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
+
+// จอยสติ๊กบนมือถือ
+const joyEl = document.getElementById('joy'), knob = joyEl.querySelector('i');
+let joyId = null;
+function joyMove(e) {
+  const r = joyEl.getBoundingClientRect();
+  let dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
+  const max = r.width / 2 - 10, len = Math.hypot(dx, dy);
+  if (len > max) { dx *= max / len; dy *= max / len; }
+  knob.style.transform = `translate(${dx}px, ${dy}px)`;
+  joy.x = dx / max; joy.y = dy / max;
+}
+joyEl.addEventListener('pointerdown', (e) => { joyId = e.pointerId; joyEl.setPointerCapture(e.pointerId); joy.active = true; joyMove(e); stopTour(true); fly = null; });
+joyEl.addEventListener('pointermove', (e) => { if (e.pointerId === joyId) joyMove(e); });
+const joyEnd = (e) => { if (e.pointerId !== joyId) return; joyId = null; joy.active = false; joy.x = joy.y = 0; knob.style.transform = ''; };
+joyEl.addEventListener('pointerup', joyEnd); joyEl.addEventListener('pointercancel', joyEnd);
+const runBtn = document.getElementById('runBtn');
+runBtn.addEventListener('pointerdown', () => { running = true; });
+for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) runBtn.addEventListener(ev, () => { running = false; });
+
+const BOUNDS = [-90, 105, -75, 85];
+function updateWalk(dt) {
+  let f = 0, s = 0;
+  if (keys.KeyW || keys.ArrowUp) f += 1;
+  if (keys.KeyS || keys.ArrowDown) f -= 1;
+  if (keys.KeyA) s -= 1;
+  if (keys.KeyD) s += 1;
+  if (keys.ArrowLeft) yaw += dt * 1.8;
+  if (keys.ArrowRight) yaw -= dt * 1.8;
+  if (joy.active) { f -= joy.y; s += joy.x; }
+  const mag = Math.hypot(f, s);
+  let moving = false;
+  if (mag > .05) {
+    if (mag > 1) { f /= mag; s /= mag; }
+    fly = null;
+    const speed = (keys.ShiftLeft || keys.ShiftRight || running) ? 9 : 4.2;
+    const sin = Math.sin(yaw), cos = Math.cos(yaw);
+    const nx = camera.position.x + (-sin * f + cos * s) * speed * dt;
+    const nz = camera.position.z + (-cos * f - sin * s) * speed * dt;
+    const p = collide(nx, nz);
+    camera.position.x = p[0]; camera.position.z = p[1];
+    moving = true;
+  }
+  walkBob += moving ? dt * 9 : 0;
+  if (!fly) { camera.position.y = EYE + (moving ? Math.sin(walkBob) * .045 : 0); applyLook(); }
+}
+let walkBob = 0;
+function collide(x, z) {
+  const r = .35;
+  x = Math.max(BOUNDS[0], Math.min(BOUNDS[1], x)); z = Math.max(BOUNDS[2], Math.min(BOUNDS[3], z));
+  for (const [x0, x1, z0, z1] of COLLIDERS) {
+    if (x > x0 - r && x < x1 + r && z > z0 - r && z < z1 + r) {
+      const px = Math.min(x - (x0 - r), (x1 + r) - x), pz = Math.min(z - (z0 - r), (z1 + r) - z);
+      if (px < pz) x = (x - (x0 - r) < (x1 + r) - x) ? x0 - r : x1 + r;
+      else z = (z - (z0 - r) < (z1 + r) - z) ? z0 - r : z1 + r;
+    }
+  }
+  return [x, z];
+}
+
+/* ---------- ทัวร์อัตโนมัติ ---------- */
+let tour = null;   // { i, t, phase }
+const DWELL = 6.5;
+function startTour() {
+  if (mode === 'walk') { mode = 'orbit'; document.body.classList.remove('walk'); document.getElementById('btnOrbit').classList.add('on'); document.getElementById('btnWalk').classList.remove('on'); }
+  controls.enabled = false;
+  tour = { i: 0, t: 0, phase: 'fly' };
+  document.getElementById('btnTour').classList.add('on');
+  document.getElementById('btnTour').querySelector('span').textContent = 'หยุดทัวร์';
+  document.getElementById('tourBar').style.display = 'block';
+  tourGo();
+}
+function tourGo() {
+  const no = TOUR[tour.i];
+  tour.phase = 'fly'; tour.t = 0;
+  focusPoint(no, { dur: 2.4 });
+  fly.done = () => { if (tour) { tour.phase = 'dwell'; tour.t = 0; } };
+}
+function stopTour(fromUser) {
+  if (!tour) return;
+  tour = null;
+  document.getElementById('btnTour').classList.remove('on');
+  document.getElementById('btnTour').querySelector('span').textContent = 'ทัวร์อัตโนมัติ';
+  document.getElementById('tourBar').style.display = 'none';
+  if (mode === 'orbit') { fly = null; controls.enabled = true; }
+  if (fromUser) showHint('หยุดทัวร์แล้ว · ควบคุมกล้องได้เอง', 2500);
+}
+function updateTour(dt) {
+  if (!tour) return;
+  const bar = document.querySelector('#tourBar i');
+  if (tour.phase === 'dwell') {
+    tour.t += dt;
+    // หมุนรอบจุดช้า ๆ
+    const off = camera.position.clone().sub(controls.target);
+    off.applyAxisAngle(new THREE.Vector3(0, 1, 0), dt * .12);
+    camera.position.copy(controls.target).add(off);
+    camera.lookAt(controls.target);
+    bar.style.width = ((tour.i + Math.min(tour.t / DWELL, 1)) / TOUR.length * 100) + '%';
+    if (tour.t >= DWELL) {
+      tour.i++;
+      if (tour.i >= TOUR.length) { stopTour(); resetView(); return; }
+      tourGo();
+    }
+  } else bar.style.width = (tour.i / TOUR.length * 100) + '%';
+}
+function resetView() {
+  hideCard();
+  if (mode === 'walk') setMode('orbit');
+  flyTo(OVERVIEW.pos, OVERVIEW.target, 1.8, () => { controls.enabled = !tour; });
+}
+
+/* =====================================================================
+   ส่วนติดต่อผู้ใช้
+   ===================================================================== */
+const cardEl = document.getElementById('card');
+function numsHTML(nos) { return nos.map((n) => `<span class="num">${n}</span>`).join(''); }
+function showCard(no) {
+  const p = POINTS[no];
+  setActive(no);
+  const grp = LEGEND.find((g) => g.includes(no));
+  document.getElementById('cNums').innerHTML = numsHTML([no]);
+  document.getElementById('cTitle').textContent = p.name;
+  document.getElementById('cDesc').textContent = p.desc;
+  const act = document.getElementById('cActions');
+  act.innerHTML = '';
+  const add = (label, fn, primary) => { const b = document.createElement('button'); b.textContent = label; if (primary) b.className = 'primary'; b.onclick = () => { stopTour(); fn(); }; act.appendChild(b); };
+  if (mode === 'orbit') add('🚶 เดินดูจุดนี้', () => { setMode('walk'); setTimeout(() => focusPoint(no), 50); }, true);
+  else add('🛰️ ดูจากมุมสูง', () => { setMode('orbit'); setTimeout(() => focusPoint(no), 1700); }, true);
+  for (const other of grp) if (other !== no) add(`อีกจุด: หมายเลข ${other}`, () => focusPoint(other));
+  const i = TOUR.indexOf(no);
+  add('จุดถัดไป ›', () => focusPoint(TOUR[(i + 1) % TOUR.length]));
+  cardEl.classList.add('show');
+  document.body.classList.remove('legend-open');
+}
+function hideCard() { cardEl.classList.remove('show'); setActive(null); }
+document.getElementById('cClose').onclick = () => { stopTour(); hideCard(); };
+
+function buildLegend() {
+  const ul = document.getElementById('legendList');
+  for (const nos of LEGEND) {
+    const li = document.createElement('li');
+    const b = document.createElement('button');
+    b.dataset.nos = nos.join(',');
+    b.innerHTML = `<span class="nums">${numsHTML(nos)}</span><span>${LEGEND_NAMES[nos.join(',')] || POINTS[nos[0]].name}</span>`;
+    b.onclick = () => { stopTour(); focusPoint(nos[0]); };
+    li.appendChild(b); ul.appendChild(li);
+  }
+}
+
+let hintTimer;
+const hintEl = document.getElementById('hint');
+function showHint(text, ms = 4000) {
+  hintEl.textContent = text; hintEl.style.opacity = 1;
+  clearTimeout(hintTimer); hintTimer = setTimeout(() => { hintEl.style.opacity = 0; }, ms);
+}
+
+document.getElementById('btnOrbit').onclick = () => { stopTour(); setMode('orbit'); };
+document.getElementById('btnWalk').onclick = () => { stopTour(); setMode('walk'); };
+document.getElementById('btnTour').onclick = () => { tour ? stopTour() : startTour(); };
+document.getElementById('btnReset').onclick = () => { stopTour(); resetView(); };
+const btnNames = document.getElementById('btnNames');
+btnNames.classList.add('on');
+btnNames.onclick = () => { document.body.classList.toggle('hide-names'); btnNames.classList.toggle('on', !document.body.classList.contains('hide-names')); };
+const btnRunners = document.getElementById('btnRunners');
+btnRunners.classList.add('on');
+btnRunners.onclick = () => { runnerGroup.visible = !runnerGroup.visible; btnRunners.classList.toggle('on', runnerGroup.visible); };
+const dlg = document.getElementById('posterDlg');
+document.getElementById('btnPoster').onclick = () => dlg.showModal();
+document.getElementById('posterClose').onclick = () => dlg.close();
+dlg.addEventListener('click', (e) => { if (e.target === dlg) dlg.close(); });
+document.getElementById('menuBtn').onclick = () => document.body.classList.toggle('legend-open');
+document.getElementById('legendClose').onclick = () => document.body.classList.remove('legend-open');
+const legendEl = document.getElementById('legend');
+document.getElementById('legendFold').onclick = () => legendEl.classList.toggle('folded');
+
+/* ---------- แผนที่ย่อ ---------- */
+const mm = document.getElementById('minimap'), mmc = mm.getContext('2d');
+const MM = { x0: -62, x1: 80, z0: -48, z1: 60 };
+function mmXY(x, z) {
+  const W = mm.width, H = mm.height, s = Math.min(W / (MM.x1 - MM.x0), H / (MM.z1 - MM.z0));
+  const ox = (W - (MM.x1 - MM.x0) * s) / 2, oz = (H - (MM.z1 - MM.z0) * s) / 2;
+  return [ox + (x - MM.x0) * s, oz + (z - MM.z0) * s, s];
+}
+function drawMinimap() {
+  const W = mm.width, H = mm.height;
+  mmc.clearRect(0, 0, W, H);
+  mmc.fillStyle = '#e9dcc2'; mmc.fillRect(0, 0, W, H);
+  const rect = (x0, z0, x1, z1, c) => { const [a, b] = mmXY(x0, z0), [c2, d] = mmXY(x1, z1); mmc.fillStyle = c; mmc.fillRect(a, b, c2 - a, d - b); };
+  rect(-92, 23.5, 140, 32.5, '#7b7f86'); rect(41.5, -80, 50.5, 95, '#7b7f86');
+  rect(-39, -34, 26, -28, '#3a3b40'); rect(-39, -34, -33, -2, '#3a3b40');
+  rect(59, -15, 73, 19, '#c9b48e');
+  rect(35.2, -28, 38, 20, '#4c9c3c');
+  for (const [no, p] of Object.entries(POINTS)) {
+    const [x, y, s] = mmXY(p.pos[0], p.pos[1]);
+    mmc.fillStyle = +no === activeNo ? '#ffd21f' : '#e3262b';
+    mmc.beginPath(); mmc.arc(x, y, 13, 0, 7); mmc.fill();
+    mmc.strokeStyle = '#fff'; mmc.lineWidth = 3; mmc.stroke();
+    mmc.fillStyle = +no === activeNo ? '#14213d' : '#fff'; mmc.font = `600 15px ${FONT_H}`; mmc.textAlign = 'center'; mmc.textBaseline = 'middle';
+    mmc.fillText(no, x, y + 1);
+  }
+  // ตำแหน่งกล้อง
+  const look = mode === 'orbit' ? controls.target : camera.position;
+  const [cx, cy] = mmXY(look.x, look.z);
+  const d = new THREE.Vector3(); camera.getWorldDirection(d);
+  const a = Math.atan2(d.x, d.z);
+  mmc.save(); mmc.translate(cx, cy); mmc.rotate(-a);
+  mmc.fillStyle = 'rgba(12,58,140,.25)'; mmc.beginPath(); mmc.moveTo(0, 0); mmc.arc(0, 0, 46, Math.PI / 2 - .5, Math.PI / 2 + .5); mmc.fill();
+  mmc.fillStyle = '#0c3a8c'; mmc.beginPath(); mmc.moveTo(0, 14); mmc.lineTo(-9, -8); mmc.lineTo(9, -8); mmc.closePath(); mmc.fill();
+  mmc.restore();
+}
+mm.addEventListener('click', (e) => {
+  stopTour();
+  const r = mm.getBoundingClientRect();
+  const px = (e.clientX - r.left) * mm.width / r.width, py = (e.clientY - r.top) * mm.height / r.height;
+  const [ox, oz, s] = mmXY(MM.x0, MM.z0);
+  const x = MM.x0 + (px - ox) / s, z = MM.z0 + (py - oz) / s;
+  if (mode === 'walk') {
+    const p = collide(x, z);
+    const d = new THREE.Vector3(); camera.getWorldDirection(d);
+    flyTo(new THREE.Vector3(p[0], EYE, p[1]), new THREE.Vector3(p[0] + d.x * 5, 1.6, p[1] + d.z * 5), 1.2, () => setLookFrom(new THREE.Vector3(p[0] + d.x * 5, 1.6, p[1] + d.z * 5)));
+  } else {
+    const off = camera.position.clone().sub(controls.target);
+    const tgt = new THREE.Vector3(x, 0, z);
+    controls.enabled = false;
+    flyTo(tgt.clone().add(off), tgt, 1.2, () => { controls.enabled = true; });
+  }
+});
+
+/* =====================================================================
+   ลูปหลัก
+   ===================================================================== */
+const clock = new THREE.Clock();
+const tmpV = new THREE.Vector3();
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), .05), t = clock.elapsedTime;
+  if (fly) {
+    fly.t += dt / fly.dur;
+    const k = ease(Math.min(fly.t, 1));
+    camera.position.lerpVectors(fly.from, fly.to, k);
+    // ยกกล้องขึ้นเล็กน้อยระหว่างบินในโหมดมุมสูง
+    if (mode === 'orbit') camera.position.y += Math.sin(k * Math.PI) * Math.min(18, fly.from.distanceTo(fly.to) * .15);
+    const look = tmpV.lerpVectors(fly.fromT, fly.toT, k);
+    if (mode === 'orbit') controls.target.copy(look);
+    camera.lookAt(look);
+    if (fly.t >= 1) { const done = fly.done; fly = null; if (mode === 'walk') setLookFrom(look.clone()); done && done(); }
+  } else if (mode === 'orbit' && !tour) controls.update();
+  if (mode === 'walk') updateWalk(dt);
+  updateTour(dt);
+  if (runnerGroup.visible) updateRunners(dt, t);
+  for (const p of IDLE) p.g.rotation.y += Math.sin(t * .5 + p.ph) * .002;
+  // จางป้ายที่อยู่ไกลมากในโหมดเดิน
+  for (const no in markers) {
+    const m = markers[no];
+    const dist = camera.position.distanceTo(m.obj.position);
+    m.el.style.opacity = mode === 'walk' ? Math.max(.25, Math.min(1, 1.4 - dist / 90)) : 1;
+    const far = mode === 'orbit' && dist > 85;
+    if (far !== m.far) { m.far = far; m.el.classList.toggle('far', far); }
+  }
+  renderer.render(scene, camera);
+  labelRenderer.render(scene, camera);
+  if ((t * 10 | 0) % 2 === 0) drawMinimap();
+}
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight); labelRenderer.setSize(innerWidth, innerHeight);
+});
+
+/* =====================================================================
+   เริ่มต้น
+   ===================================================================== */
+async function init() {
+  try {
+    await Promise.race([
+      Promise.all([document.fonts.load(`600 40px Kanit`), document.fonts.load(`800 40px Kanit`), document.fonts.load(`400 16px Sarabun`)]),
+      new Promise((r) => setTimeout(r, 2500)),
+    ]);
+  } catch (e) { /* ใช้ฟอนต์สำรองของเครื่อง */ }
+  buildSky(); buildGround(); buildRoads();
+  buildStage(); buildReception(); buildWater(); buildBaggage(); buildStart(); buildToilets(); buildFirstAid();
+  buildBins(); buildFood(); buildNursing(); buildWalkway(); buildBackdrop(); buildPrivateFood();
+  buildLandscape(); buildBuildings(); buildCrowd(); buildRunners();
+  // ป้ายตั้งสีน้ำเงินตามจุดต่าง ๆ
+  for (const [x, z, r] of [[-30, 16, 1.3], [-6, -6, .3], [16, -12, -.5], [-25, -21, .6], [14, 3, -.8], [-38, 20, 1.2]]) standee(x, z, r);
+  buildMarkers(); buildLegend();
+  animate();
+  const ld = document.getElementById('loading');
+  ld.style.opacity = 0; setTimeout(() => ld.remove(), 700);
+  showHint(isTouch ? 'ลากนิ้วเพื่อหมุน · ถ่างนิ้วเพื่อซูม · แตะหมายเลขเพื่อดูแต่ละจุด'
+                   : 'ลากเมาส์เพื่อหมุน · ล้อเมาส์เพื่อซูม · คลิกหมายเลขเพื่อดูแต่ละจุด · กด W เพื่อเริ่มเดิน', 6500);
+  const q = new URLSearchParams(location.search);
+  if (q.has('tour')) startTour();
+  else if (q.has('walk')) setMode('walk');
+  else if (q.get('p') && POINTS[q.get('p')]) focusPoint(+q.get('p'));
+  window.__ready = true;
+  window.__view = { get flying() { return !!fly; }, get mode() { return mode; } };
+}
+init();
+</script>
+</body>
+</html>
